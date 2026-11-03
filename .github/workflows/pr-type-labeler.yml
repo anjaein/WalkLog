@@ -1,0 +1,47 @@
+name: PR Type Labeler
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-type-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  label:
+    name: Label PR Type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const types = ['feat', 'fix', 'design', 'docs', 'refactor', 'perf', 'test', 'chore'];
+
+            // PR 템플릿 "변경 유형"에서 체크된 항목(- [x] ... `feat` ...)만 골라냄
+            const body = context.payload.pull_request.body || '';
+            const checked = [...body.matchAll(/^\s*[-*] \[[xX]\][^`\n]*`([a-z]+)`/gm)]
+              .map(m => m[1])
+              .filter(type => types.includes(type));
+            const selected = new Set(checked.map(type => `type: ${type}`));
+
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number });
+            const current = labels.map(label => label.name);
+
+            const toAdd = [...selected].filter(name => !current.includes(name));
+            if (toAdd.length) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number, labels: toAdd });
+            }
+
+            // 체크 해제된 type 라벨은 떼어냄
+            for (const name of current) {
+              if (name.startsWith('type: ') && !selected.has(name)) {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number, name });
+              }
+            }

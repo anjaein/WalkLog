@@ -1,0 +1,48 @@
+'auth':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/feature/auth/**/*'
+'record':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/feature/record/**/*'
+'photomap':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/feature/photomap/**/*'
+'discover':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/feature/discover/**/*'
+'mypage':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/feature/mypage/**/*'
+'ui':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'android/app/src/*/java/**/ui/**/*'
+          - 'android/app/src/main/res/**/*'
+'data':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/data/**/*'
+'domain':
+  - changed-files:
+      - any-glob-to-any-file: 'android/app/src/*/java/**/domain/**/*'
+'firebase':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'firebase/**/*'
+          - 'firebase.json'
+          - 'android/app/google-services.json'
+'config':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.gradle.kts'
+          - 'android/gradle.properties'
+          - 'android/gradle/wrapper/**/*'
+          - 'android/app/src/main/AndroidManifest.xml'
+          - '.github/**/*'
+'dependencies':
+  - changed-files:
+      - any-glob-to-any-file: 'android/gradle/libs.versions.toml'
+'documentation':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**/*'
