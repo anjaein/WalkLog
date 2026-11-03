@@ -22,14 +22,11 @@ WalkLog/
 │   ├── gradle/
 │   ├── build.gradle.kts
 │   └── settings.gradle.kts
-├── firebase/                # 백엔드 (Firebase 설정 · 보안 규칙)
-│   ├── firestore.rules
-│   ├── firestore.indexes.json
-│   ├── storage.rules
-│   └── functions/           # 필요해지면 추가 (추천 로직 등)
+├── firebase/                # 백엔드 설정 · 보안 규칙
 ├── docs/                    # 기획안, 화면 설계, DB 스키마 메모
 ├── .github/                 # 이슈 · PR 템플릿
-├── firebase.json
+├── .coderabbit.yaml         # CodeRabbit 리뷰 설정
+├── AGENTS.md                # AI 작업 규칙 (CLAUDE.md가 참조)
 ├── CONVENTION.md            # 협업 컨벤션
 └── README.md
 ```
@@ -44,7 +41,7 @@ walklog/
 │   ├── photomap/    # 사진 지도, 경로 위 사진 핀
 │   ├── discover/    # 코스 검색 · 테마 추천
 │   └── mypage/      # 마이페이지 · 프로필
-├── data/            # Firebase 접근 (repository)
+├── data/            # 외부 서비스 접근 (repository)
 ├── domain/          # GPS 필터링, 거리 · 구간 계산, 사진 ↔ 경로 매칭, 코스 빌더
 └── ui/
     ├── theme/
