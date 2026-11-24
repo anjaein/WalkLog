@@ -1,58 +1,90 @@
 package com.example.walklog.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val DefaultShapes = WalkLogShapes()
+private val DefaultSpacing = WalkLogSpacing()
+private val DefaultSizes = WalkLogSizes()
+private val DefaultElevation = WalkLogElevation()
+private val DefaultMotion = WalkLogMotion()
+
+private val LocalWalkLogColors = staticCompositionLocalOf { LightWalkLogColors }
+private val LocalWalkLogTypography = staticCompositionLocalOf { DefaultWalkLogTypography }
+private val LocalWalkLogShapes = staticCompositionLocalOf { DefaultShapes }
+private val LocalWalkLogSpacing = staticCompositionLocalOf { DefaultSpacing }
+private val LocalWalkLogSizes = staticCompositionLocalOf { DefaultSizes }
+private val LocalWalkLogElevation = staticCompositionLocalOf { DefaultElevation }
+private val LocalWalkLogMotion = staticCompositionLocalOf { DefaultMotion }
+
+private val MaterialTypography = DefaultWalkLogTypography.toMaterialTypography()
+private val MaterialShapes = DefaultShapes.toMaterialShapes()
+
+// Material 컴포넌트도 앱 색을 쓰도록 맞춘다.
+private val WalkLogMaterialColors = lightColorScheme(
+    primary = Ink,
+    onPrimary = Cream,
+    primaryContainer = Hairline,
+    onPrimaryContainer = Ink,
+    secondary = Tomato,
+    onSecondary = Ink,
+    tertiary = Cobalt,
+    onTertiary = OnDark,
+    background = Cream,
+    onBackground = Ink,
+    surface = SurfaceWhite,
+    onSurface = Ink,
+    surfaceVariant = Cream,
+    onSurfaceVariant = InkSecondary,
+    outline = Hairline,
+    outlineVariant = Hairline,
+    error = Danger,
+    onError = OnDark,
+    scrim = Ink,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+/**
+ * 화면에서 토큰을 꺼내 쓰는 곳. 예: `WalkLogTheme.colors.tomato`, `WalkLogTheme.spacing.gutter`
+ */
+object WalkLogTheme {
+    val colors: WalkLogColors
+        @Composable @ReadOnlyComposable get() = LocalWalkLogColors.current
+    val typography: WalkLogTypography
+        @Composable @ReadOnlyComposable get() = LocalWalkLogTypography.current
+    val shapes: WalkLogShapes
+        @Composable @ReadOnlyComposable get() = LocalWalkLogShapes.current
+    val spacing: WalkLogSpacing
+        @Composable @ReadOnlyComposable get() = LocalWalkLogSpacing.current
+    val sizes: WalkLogSizes
+        @Composable @ReadOnlyComposable get() = LocalWalkLogSizes.current
+    val elevation: WalkLogElevation
+        @Composable @ReadOnlyComposable get() = LocalWalkLogElevation.current
+    val motion: WalkLogMotion
+        @Composable @ReadOnlyComposable get() = LocalWalkLogMotion.current
+}
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-)
-
+// 디자인에 다크 모드가 아직 없어서 라이트 색 한 벌만 쓴다. 기기 배경화면 색을 따라가는 동적 색상도 쓰지 않는다.
+// 지도 탭처럼 어두운 화면은 colors.mapBackground 등 지도 전용 색으로 그린다.
 @Composable
-fun WalkLogTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+fun WalkLogTheme(content: @Composable () -> Unit) {
+    CompositionLocalProvider(
+        LocalWalkLogColors provides LightWalkLogColors,
+        LocalWalkLogTypography provides DefaultWalkLogTypography,
+        LocalWalkLogShapes provides DefaultShapes,
+        LocalWalkLogSpacing provides DefaultSpacing,
+        LocalWalkLogSizes provides DefaultSizes,
+        LocalWalkLogElevation provides DefaultElevation,
+        LocalWalkLogMotion provides DefaultMotion,
+    ) {
+        MaterialTheme(
+            colorScheme = WalkLogMaterialColors,
+            typography = MaterialTypography,
+            shapes = MaterialShapes,
+            content = content,
+        )
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
 }
