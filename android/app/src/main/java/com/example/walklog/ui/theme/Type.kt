@@ -16,7 +16,8 @@ val Pretendard = FontFamily(
     Font(R.font.pretendard_extrabold, FontWeight.ExtraBold),
 )
 
-// 숫자 · 영문용 글꼴은 영문 · 숫자 · 기본 문장부호만 담아 용량을 줄였다. 한글을 쓰면 Pretendard로 보이지 않으니 숫자에만 쓴다.
+// 숫자 · 영문용 글꼴(Bricolage · Doto · Red Hat)에는 한글이 없다. 한글을 쓰면 Pretendard로 보이지 않으니 숫자 · 영문에만 쓴다.
+// Doto는 영문 · 숫자 · 기본 문장부호만 남겨 용량을 줄였다.
 val BricolageGrotesque = FontFamily(
     Font(R.font.bricolage_grotesque_bold, FontWeight.Bold),
     Font(R.font.bricolage_grotesque_extrabold, FontWeight.ExtraBold),
