@@ -13,7 +13,10 @@ local.properties
 captures/
 
 # Firebase
+# 앱 연결 설정 파일은 팀 드라이브에서 받아 android/app/ 에 넣는다 (공개 레포라 커밋하지 않음)
+google-services.json
 .firebase/
+ui-debug.log
 firebase-debug.log
 firestore-debug.log
 node_modules/

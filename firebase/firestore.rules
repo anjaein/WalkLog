@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// 로컬 에뮬레이터 전용 개발 규칙: 모두 허용한다.
+// 진짜 Firebase 규칙은 Firebase 콘솔에서 따로 관리한다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

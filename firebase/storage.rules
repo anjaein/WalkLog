@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// 로컬 에뮬레이터 전용 개발 규칙: 모두 허용한다.
+// 시연 때 사진은 Cloudinary에 올리므로 진짜 Firebase Storage는 쓰지 않는다.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}
