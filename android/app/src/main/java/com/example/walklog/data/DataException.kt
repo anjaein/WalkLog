@@ -8,10 +8,11 @@ package com.example.walklog.data
  *   - [InvalidCredentialsException]: 이메일 · 비밀번호가 틀렸거나, 없거나 막힌 계정, 잘못된 Google 토큰
  *   - [InvalidEmailException]: 가입 · 로그인 · 비밀번호 재설정 때 이메일 형식이 틀렸거나 비어 있음
  *   - [EmailAlreadyInUseException]: 이미 가입된 이메일로 가입, 같은 이메일이 다른 방식으로 가입돼 있음
- *   - [WeakPasswordException]: 가입 때 비밀번호가 너무 약함
+ *   - [WeakPasswordException]: 가입 때 비밀번호가 너무 약하거나 비어 있음
  * - [PermissionDeniedException]: 로그인 안 했거나 풀림, 본인이 아님(남의 uid · 남의 로그), 보안 규칙에 막힘
  * - [NotFoundException]: 고치거나 표시하려는 문서 · 파일이 없음(볼 수 없는 남의 나만 보기 로그 포함)
- * - [TooManyRequestsException]: 너무 자주 시도했거나 사용 한도를 넘어 막힘(로그인 시도 반복, Firestore RESOURCE_EXHAUSTED 등). 잠시 뒤 다시 시도하면 된다
+ * - [TooManyRequestsException]: 너무 자주 시도했거나 사용 한도를 넘음(로그인 시도 반복, Firestore RESOURCE_EXHAUSTED, Storage 한도 초과 등).
+ *   잠깐 뒤 또는 한도가 풀린 뒤(무료 하루 한도면 몇 시간 뒤) 다시 시도해야 한다
  * - [LocationPermissionException]: 위치 권한이 없음
  * - [InvalidHandleException] · [HandleTakenException]: 아이디 규칙 위반 · 이미 쓰는 아이디
  * - [PhotoUnreadableException] · [PhotoUploadException]: 사진을 못 읽음 · 사진 업로드 실패

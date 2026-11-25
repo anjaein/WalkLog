@@ -65,6 +65,13 @@ class SuspendRunCatchingTest {
     }
 
     @Test
+    fun cancellationWithErrorCauseWhileCoroutineActive_rethrowsError() {
+        assertThrows(OutOfMemoryError::class.java) {
+            runBlocking { suspendRunCatching<Int> { throw CancellationException("x", OutOfMemoryError("test")) } }
+        }
+    }
+
+    @Test
     fun cancelledCoroutine_rethrowsCancellation() = runBlocking {
         var resumedAfterCatch = false
         val job = launch(start = CoroutineStart.UNDISPATCHED) {

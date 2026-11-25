@@ -4,6 +4,7 @@ import com.example.walklog.data.DataException
 import com.example.walklog.data.NetworkException
 import com.example.walklog.data.NotFoundException
 import com.example.walklog.data.PermissionDeniedException
+import com.example.walklog.data.TooManyRequestsException
 import com.example.walklog.data.UnknownDataException
 import com.example.walklog.data.log.LogIds
 import com.example.walklog.data.user.UserIds
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * 모든 실패(Result · Flow 오류)는 [DataException]이다. 아래 함수마다 적은 것 말고도
  * 네트워크가 안 되면 [NetworkException], 보안 규칙에 막히면 [PermissionDeniedException],
- * 그 밖은 [UnknownDataException](원래 예외는 cause)으로 실패한다.
+ * 사용 한도를 넘으면 [TooManyRequestsException], 그 밖은 [UnknownDataException](원래 예외는 cause)으로 실패한다.
  * cause 가 IllegalArgumentException 인 [UnknownDataException]은 잘못된 id 같은 입력 실수라 확실히 실패한 것이다. 같은 값으로 다시 시도하지 않는다.
  */
 interface LikeRepository {

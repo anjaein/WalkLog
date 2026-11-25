@@ -15,8 +15,10 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import java.net.ConnectException
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 
 /** 외부 SDK 예외를 화면이 다룰 [DataException]으로 바꾼다. 취소([CancellationException])는 여기 넘기지 말고 다시 던진다. */
 internal fun Throwable.toDataException(): DataException {
@@ -34,12 +36,14 @@ internal fun Throwable.toDataException(): DataException {
 
 /**
  * Flow 오류는 Result 를 거치지 않고 collect 하는 화면으로 바로 가므로, 여기서도 DataException 으로 바꿔야 화면이 SDK 예외를 안 본다.
- * 수집하는 쪽이 취소됐으면 무슨 예외로 끝났든 취소로 올려 보내고, Error(OutOfMemoryError 등)는 [suspendRunCatching]처럼 바꾸지 않는다.
+ * 위쪽에서 Error(OutOfMemoryError 등)가 바로 오면 [suspendRunCatching]처럼 취소 여부와 상관없이 그대로 던진다.
+ * 그 밖의 예외는 수집하는 쪽이 취소됐으면 취소로 올려 보낸다. 원인이 Error 인 CancellationException 도 마찬가지라,
+ * 수집하는 쪽이 살아 있을 때만 그 Error 를 던지고 이미 취소됐으면 취소가 이긴다.
  */
 internal fun <T> Flow<T>.mapDataErrors(): Flow<T> = catch { e ->
+    if (e !is Exception) throw e
     // 취소 때 연결을 끊으면 위쪽 흐름은 IOException 같은 일반 예외로 끝난다. 이것도 실패가 아니라 취소다
     currentCoroutineContext().ensureActive()
-    if (e !is Exception) throw e
     if (e is CancellationException) {
         // Firestore snapshots() 는 리스너 오류를 cancel(cause = 진짜 오류)로 알려서, 수집하는 쪽은 살아 있는데 CancellationException 을 받는다.
         // 그대로 올리면 화면은 아무 표시 없이 멈추므로, 원인으로 실패를 알린다
@@ -93,6 +97,7 @@ internal fun firestoreFailureFor(codeName: String, cause: Throwable): DataExcept
 internal fun storageFailureFor(errorCode: Int, cause: Throwable): DataException? = when (errorCode) {
     StorageException.ERROR_NOT_AUTHORIZED, StorageException.ERROR_NOT_AUTHENTICATED -> PermissionDeniedException(cause = cause)
     StorageException.ERROR_OBJECT_NOT_FOUND -> NotFoundException(cause = cause)
+    StorageException.ERROR_QUOTA_EXCEEDED -> TooManyRequestsException(cause)
     else -> null
 }
 
@@ -105,6 +110,9 @@ private fun Throwable.isNetworkProblemItself(): Boolean =
         this is UnknownHostException ||
         this is SocketTimeoutException ||
         this is ConnectException ||
+        // 연결 끊김(Connection reset) · NoRouteToHost 는 SocketException, 와이파이 로그인 페이지 등에서 끊긴 TLS 는 SSLException 으로 온다
+        this is SocketException ||
+        this is SSLException ||
         (this is FirebaseFirestoreException && (code == FirebaseFirestoreException.Code.UNAVAILABLE || code == FirebaseFirestoreException.Code.DEADLINE_EXCEEDED)) ||
         (this is StorageException && errorCode == StorageException.ERROR_RETRY_LIMIT_EXCEEDED)
 

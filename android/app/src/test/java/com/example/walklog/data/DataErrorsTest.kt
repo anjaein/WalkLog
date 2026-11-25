@@ -22,7 +22,11 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketException
 import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -52,6 +56,16 @@ class DataErrorsTest {
         val mapped = error.toDataException()
         assertTrue(mapped is NetworkException)
         assertSame(error, mapped.cause)
+    }
+
+    @Test
+    fun socketAndSslProblems_becomeNetworkException() {
+        listOf(
+            SocketException("Connection reset"),
+            NoRouteToHostException("no route"),
+            ConnectException("refused"),
+            SSLException("connection closed"),
+        ).forEach { assertTrue(it.toString(), it.toDataException() is NetworkException) }
     }
 
     @Test
@@ -125,7 +139,8 @@ class DataErrorsTest {
         assertTrue(storageFailureFor(StorageException.ERROR_NOT_AUTHORIZED, cause) is PermissionDeniedException)
         assertTrue(storageFailureFor(StorageException.ERROR_NOT_AUTHENTICATED, cause) is PermissionDeniedException)
         assertTrue(storageFailureFor(StorageException.ERROR_OBJECT_NOT_FOUND, cause) is NotFoundException)
-        assertNull(storageFailureFor(StorageException.ERROR_QUOTA_EXCEEDED, cause))
+        assertTrue(storageFailureFor(StorageException.ERROR_QUOTA_EXCEEDED, cause) is TooManyRequestsException)
+        assertNull(storageFailureFor(StorageException.ERROR_UNKNOWN, cause))
     }
 
     @Test
@@ -241,6 +256,27 @@ class DataErrorsTest {
     }
 
     @Test
+    fun collectorCancelled_thenUpstreamError_rethrowsError() = runBlocking {
+        var blocked: Continuation<Unit>? = null
+        var caught: Throwable? = null
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                flow<Int> {
+                    suspendCoroutine<Unit> { blocked = it }
+                    throw StackOverflowError()
+                }.mapDataErrors().collect()
+            } catch (e: Throwable) {
+                // 다시 던지면 Error 가 부모(runBlocking)까지 올라가 테스트가 깨지므로, 여기서 받아 두기만 한다
+                caught = e
+            }
+        }
+        job.cancel()
+        blocked!!.resume(Unit)
+        job.join()
+        assertTrue(caught is StackOverflowError)
+    }
+
+    @Test
     fun collectorCancelled_isNotMapped() = runBlocking {
         var caught: Throwable? = null
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
@@ -260,7 +296,8 @@ class DataErrorsTest {
 
     @Test
     fun collectorStoppingEarly_isNotMapped() = runBlocking {
-        // first() 는 값을 받으면 내부적으로 CancellationException 계열로 위쪽 흐름을 멈춘다
+        // first() 는 값을 받으면 내부적으로 CancellationException 계열로 위쪽 흐름을 멈춘다.
+        // catch 연산자는 아래쪽에서 온 이런 중단을 바꾸지 않고 다시 던져서 통과한다. 다른 연산자로 바꿀 때 깨지지 않는지 지키는 테스트다
         val value = flow { emit(7); awaitCancellation() }.mapDataErrors().first()
         assertEquals(7, value)
     }

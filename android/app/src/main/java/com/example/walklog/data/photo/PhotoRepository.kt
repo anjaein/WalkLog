@@ -5,6 +5,7 @@ import com.example.walklog.data.DataException
 import com.example.walklog.data.NetworkException
 import com.example.walklog.data.NotFoundException
 import com.example.walklog.data.PermissionDeniedException
+import com.example.walklog.data.TooManyRequestsException
 import com.example.walklog.data.PhotoUnreadableException
 import com.example.walklog.data.PhotoUploadException
 import com.example.walklog.data.UnknownDataException
@@ -17,7 +18,8 @@ interface PhotoRepository {
      * 올리는 파일은 긴 변 1600px JPEG로 줄여서 위치 등 사진 속 정보가 빠지게 한다.
      *
      * 사진을 열거나 읽지 못하면 [PhotoUnreadableException], 네트워크가 안 되면 [NetworkException],
-     * 저장소 규칙에 막히면 [PermissionDeniedException], 그 밖에 업로드가 실패하면 [PhotoUploadException]으로 실패한다.
+     * 저장소 규칙에 막히면 [PermissionDeniedException], 저장소 사용 한도를 넘으면 [TooManyRequestsException],
+     * 그 밖에 업로드가 실패하면 [PhotoUploadException]으로 실패한다.
      */
     suspend fun upload(uri: Uri): Result<LogPhoto>
 
@@ -25,7 +27,7 @@ interface PhotoRepository {
      * 올린 사진 파일을 지운다. 지울 수 없는 저장소(Cloudinary)는 아무것도 안 하고 성공으로 끝낸다.
      * 앱이 사진을 올리는 폴더 밖을 가리키는 주소면 지우지 않고 성공으로 끝낸다.
      * 네트워크가 안 되면 [NetworkException], 저장소 규칙에 막히면 [PermissionDeniedException],
-     * 파일이 없으면 [NotFoundException], 그 밖은 [UnknownDataException]으로 실패한다.
+     * 사용 한도를 넘으면 [TooManyRequestsException], 파일이 없으면 [NotFoundException], 그 밖은 [UnknownDataException]으로 실패한다.
      */
     suspend fun delete(photo: LogPhoto): Result<Unit>
 }

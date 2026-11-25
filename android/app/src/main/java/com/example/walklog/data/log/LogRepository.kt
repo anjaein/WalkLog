@@ -4,6 +4,7 @@ import com.example.walklog.data.DataException
 import com.example.walklog.data.NetworkException
 import com.example.walklog.data.NotFoundException
 import com.example.walklog.data.PermissionDeniedException
+import com.example.walklog.data.TooManyRequestsException
 import com.example.walklog.data.UnknownDataException
 import com.example.walklog.data.model.FeedSort
 import com.example.walklog.data.model.WalkLog
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * 모든 실패(Result · Flow 오류)는 [DataException]이다. 아래 함수마다 적은 것 말고도
  * 네트워크가 안 되면 [NetworkException], 보안 규칙에 막히면 [PermissionDeniedException],
- * 그 밖은 [UnknownDataException](원래 예외는 cause)으로 실패한다.
+ * 사용 한도를 넘으면 [TooManyRequestsException], 그 밖은 [UnknownDataException](원래 예외는 cause)으로 실패한다.
  * id 가 [LogIds] · [UserIds] 규칙에 맞지 않는 것 같은 호출 실수도 [UnknownDataException](cause 는 IllegalArgumentException)이다.
  * cause 가 IllegalArgumentException 인 [UnknownDataException]은 잘못된 id 같은 입력 실수라 확실히 실패한 것이다. 같은 값으로 다시 시도하지 않는다.
  */
@@ -59,6 +60,7 @@ interface LogRepository {
      * 이번 수정을 위해 새로 올린 사진은, 수정이 확실히 안 됐을 때([NotFoundException] · [PermissionDeniedException] ·
      * cause 가 IllegalArgumentException 인 [UnknownDataException])만 화면이 지운다. 이 실패들은 다시 시도하지 않는다.
      * 그 밖의 실패([NetworkException] · 나머지 [UnknownDataException])는 이미 저장됐을 수 있으니 사진을 지우지 말고 같은 내용으로 다시 시도한다.
+     * [TooManyRequestsException]도 사진을 지우지 말고, 한도가 풀린 뒤(나중에) 같은 내용으로 다시 시도한다.
      * 수정이 성공하면 목록에서 뺀 사진 파일은 화면이 지운다(Repository 는 지우지 않는다).
      */
     suspend fun updateLog(log: WalkLog): Result<Unit>
