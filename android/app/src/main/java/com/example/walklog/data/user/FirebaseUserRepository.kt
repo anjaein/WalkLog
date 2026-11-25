@@ -35,9 +35,12 @@ class FirebaseUserRepository(private val firestore: FirebaseFirestore) : UserRep
         // 트랜잭션 안에서 던진 예외는 SDK가 감쌀 수 있어서, 결과만 돌려받고 예외는 밖에서 던진다.
         val claimed = firestore.runTransaction { tx ->
             val existing = tx.get(handleRef)
+            val oldHandle = tx.get(userDoc(user.uid)).getString("handle")
             if (existing.exists() && existing.getString("uid") != user.uid) {
                 false
             } else {
+                // 온보딩에서 아이디를 바꿔 다시 만들면 예전 아이디를 풀어 줘야 다른 사람이 쓸 수 있다
+                if (oldHandle != null && oldHandle != handle) tx.delete(handleDoc(oldHandle))
                 tx.set(handleRef, mapOf("uid" to user.uid))
                 tx.set(userDoc(user.uid), profile.toFirestore())
                 true

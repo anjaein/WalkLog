@@ -67,9 +67,10 @@ class FirebaseLogRepository(
         val ref = logs.document(logId)
         val snapshot = ref.get().await()
         val photos = snapshot.data?.let { walkLogFromFirestore(snapshot.id, it) }?.photos.orEmpty()
-        // 사진 파일 하나를 못 지웠다고 로그 삭제까지 막으면 사용자가 로그를 영영 못 지우게 된다
-        photos.forEach { photo -> runCatching { photoRepository.delete(photo) } }
+        // 문서를 먼저 지운다. 사진을 먼저 지우고 문서 삭제가 실패하면 사진 없는 로그가 남는다.
         ref.delete().await()
+        // 사진 파일 하나를 못 지웠다고 로그 삭제까지 실패로 돌리면 안 된다
+        photos.forEach { photo -> runCatching { photoRepository.delete(photo) } }
         Unit
     }
 

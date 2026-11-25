@@ -24,7 +24,9 @@ class StoragePhotoRepository(
     }
 
     override suspend fun delete(photo: LogPhoto): Result<Unit> = runCatching {
-        storage.getReferenceFromUrl(photo.url).delete().await()
+        // getReferenceFromUrl 은 에뮬레이터 주소(http://127.0.0.1:9199/...)를 못 읽는다. 주소 끝의 .../o/{경로} 에서 경로를 꺼낸다
+        val path = requireNotNull(Uri.parse(photo.url).lastPathSegment) { "사진 주소에서 경로를 찾지 못했어요: ${photo.url}" }
+        storage.reference.child(path).delete().await()
         Unit
     }
 }
