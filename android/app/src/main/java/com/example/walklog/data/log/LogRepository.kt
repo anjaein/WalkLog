@@ -9,10 +9,14 @@ interface LogRepository {
     /** 로그 하나를 지켜본다. 지워졌거나 없으면 null. logId 가 [LogIds] 규칙에 맞지 않으면 수집할 때 [IllegalArgumentException]으로 실패한다. */
     fun observeLog(logId: String): Flow<WalkLog?>
 
-    /** 한 사용자의 로그, 최근 순. 내 프로필이면 includePrivate = true 로 나만 보기 로그까지 받는다. */
+    /**
+     * 한 사용자의 로그, 최근 순. 내 프로필이면 includePrivate = true 로 나만 보기 로그까지 받는다.
+     * includePrivate = true 여도 uid 가 지금 로그인한 사용자가 아니면(로그인 안 함 포함) 공개 로그만 준다.
+     * 로그인한 사용자는 부를 때 한 번 확인하므로, 로그인 · 로그아웃 뒤에는 다시 불러야 한다.
+     */
     fun observeLogsByUser(uid: String, includePrivate: Boolean): Flow<List<WalkLog>>
 
-    /** 탐색 피드: 공개 로그만. tag 를 주면 그 태그가 붙은 로그만 거른다. */
+    /** 탐색 피드: 공개 로그만. tag 를 주면 그 태그가 붙은 로그만 거른다. limit 이 0 이하면 수집할 때 [IllegalArgumentException]으로 실패한다. */
     fun observeFeed(tag: String? = null, sort: FeedSort = FeedSort.RECENT, limit: Long = 50): Flow<List<WalkLog>>
 
     /**

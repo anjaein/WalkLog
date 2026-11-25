@@ -3,6 +3,7 @@ package com.example.walklog.data.save
 import com.example.walklog.data.firebase.FirestorePaths
 import com.example.walklog.data.log.LogIds
 import com.example.walklog.data.suspendRunCatching
+import com.example.walklog.data.user.UserIds
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -20,18 +21,27 @@ class FirebaseSaveRepository(
     private fun savesOf(uid: String) =
         firestore.collection(FirestorePaths.USERS).document(uid).collection(FirestorePaths.SAVES)
 
-    override fun observeSavedLogIds(uid: String): Flow<List<String>> =
-        savesOf(uid).orderBy("savedAt", Query.Direction.DESCENDING)
+    override fun observeSavedLogIds(uid: String): Flow<List<String>> {
+        // 잘못된 uid 를 부른 자리에서 바로 죽이지 않고, 수집할 때 실패로 알린다
+        if (!UserIds.isValid(uid)) return flow<List<String>> { UserIds.requireValid(uid) }
+        return savesOf(uid).orderBy("savedAt", Query.Direction.DESCENDING)
             .snapshots()
             .map { snapshot -> snapshot.documents.map { it.id } }
+    }
 
     override fun observeIsSaved(uid: String, logId: String): Flow<Boolean> {
         // 잘못된 id 를 부른 자리에서 바로 죽이지 않고, 수집할 때 실패로 알린다
-        if (!LogIds.isValid(logId)) return flow<Boolean> { LogIds.requireValid(logId) }
+        if (!UserIds.isValid(uid) || !LogIds.isValid(logId)) {
+            return flow<Boolean> {
+                UserIds.requireValid(uid)
+                LogIds.requireValid(logId)
+            }
+        }
         return savesOf(uid).document(logId).snapshots().map { it.exists() }
     }
 
     override suspend fun setSaved(uid: String, logId: String, saved: Boolean): Result<Unit> = suspendRunCatching {
+        UserIds.requireValid(uid)
         LogIds.requireValid(logId)
         if (uid != currentUid()) throw IllegalStateException("Not the signed-in user")
         val markerRef = savesOf(uid).document(logId)

@@ -9,14 +9,14 @@ class HandleRulesTest {
 
     @Test
     fun isValid_acceptsAllowedHandles() {
-        listOf("seokdu.walks", "mangwon_cat", "abc", "a".repeat(20)).forEach {
+        listOf("seokdu.walks", "mangwon_cat", "abc", "a".repeat(20), "__abc", "abc__", "_a_").forEach {
             assertTrue(it, HandleRules.isValid(it))
         }
     }
 
     @Test
     fun isValid_rejectsBrokenHandles() {
-        listOf("ab", "a".repeat(21), ".abc", "abc.", "a..b", "seok/du", "한글", "has space", "").forEach {
+        listOf("ab", "a".repeat(21), ".abc", "abc.", "a..b", "seok/du", "한글", "has space", "", "__abc__", "____", "___").forEach {
             assertFalse(it, HandleRules.isValid(it))
         }
     }

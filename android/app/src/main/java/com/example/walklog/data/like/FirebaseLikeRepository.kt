@@ -3,6 +3,7 @@ package com.example.walklog.data.like
 import com.example.walklog.data.firebase.FirestorePaths
 import com.example.walklog.data.log.LogIds
 import com.example.walklog.data.suspendRunCatching
+import com.example.walklog.data.user.UserIds
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.snapshots
@@ -22,11 +23,17 @@ class FirebaseLikeRepository(
 
     override fun observeIsLiked(uid: String, logId: String): Flow<Boolean> {
         // 잘못된 id 를 부른 자리에서 바로 죽이지 않고, 수집할 때 실패로 알린다
-        if (!LogIds.isValid(logId)) return flow<Boolean> { LogIds.requireValid(logId) }
+        if (!UserIds.isValid(uid) || !LogIds.isValid(logId)) {
+            return flow<Boolean> {
+                UserIds.requireValid(uid)
+                LogIds.requireValid(logId)
+            }
+        }
         return likeRef(uid, logId).snapshots().map { it.exists() }
     }
 
     override suspend fun setLiked(uid: String, logId: String, liked: Boolean): Result<Unit> = suspendRunCatching {
+        UserIds.requireValid(uid)
         LogIds.requireValid(logId)
         if (uid != currentUid()) throw IllegalStateException("Not the signed-in user")
         val markerRef = likeRef(uid, logId)

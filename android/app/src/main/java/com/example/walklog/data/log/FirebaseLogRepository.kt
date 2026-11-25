@@ -38,13 +38,17 @@ class FirebaseLogRepository(
 
     override fun observeLogsByUser(uid: String, includePrivate: Boolean): Flow<List<WalkLog>> {
         var query: Query = logs.whereEqualTo("authorId", uid)
-        if (!includePrivate) query = query.whereEqualTo("visibility", PUBLIC)
+        // 남의 프로필에서 includePrivate 를 잘못 넘겨도 나만 보기 로그가 새지 않게, 본인일 때만 허용한다
+        val withPrivate = includePrivate && uid == currentUid()
+        if (!withPrivate) query = query.whereEqualTo("visibility", PUBLIC)
         return query.orderBy("startedAt", Query.Direction.DESCENDING)
             .snapshots()
             .map { it.toWalkLogs() }
     }
 
     override fun observeFeed(tag: String?, sort: FeedSort, limit: Long): Flow<List<WalkLog>> {
+        // Query.limit 은 0 이하를 부른 자리에서 바로 던지므로, 수집할 때 실패로 알린다
+        if (limit <= 0) return flow<List<WalkLog>> { require(limit > 0) { "Invalid feed limit: $limit" } }
         var query: Query = logs.whereEqualTo("visibility", PUBLIC)
         if (tag != null) query = query.whereArrayContains("tags", tag)
         val orderField = when (sort) {

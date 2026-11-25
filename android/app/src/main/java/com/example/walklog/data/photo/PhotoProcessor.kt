@@ -3,6 +3,8 @@ package com.example.walklog.data.photo
 import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorSpace
 import android.graphics.Matrix
 import android.media.ExifInterface
@@ -86,9 +88,9 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
             )
             applyOrientation(orientation)
         }
-        val result = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
-        // 변환할 게 없으면 createBitmap이 원본을 그대로 돌려줄 수 있어서, 같은 객체면 먼저 recycle하지 않는다.
-        if (result !== decoded) decoded.recycle()
+        val transformed = decoded.replaceWith { Bitmap.createBitmap(it, 0, 0, it.width, it.height, matrix, true) }
+        // JPEG 는 투명도를 담지 못해 투명한 부분이 검게 저장되므로, 흰 바탕에 먼저 그린다
+        val result = if (transformed.hasAlpha()) transformed.replaceWith { it.onWhiteBackground() } else transformed
 
         return try {
             ByteArrayOutputStream().use { out ->
@@ -100,6 +102,27 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
         } finally {
             result.recycle()
         }
+    }
+
+    // 변환할 게 없으면 createBitmap이 원본을 그대로 돌려줄 수 있어서, 같은 객체면 recycle하지 않는다.
+    private inline fun Bitmap.replaceWith(transform: (Bitmap) -> Bitmap): Bitmap {
+        val replaced = try {
+            transform(this)
+        } catch (e: Throwable) {
+            recycle()
+            throw e
+        }
+        if (replaced !== this) recycle()
+        return replaced
+    }
+
+    private fun Bitmap.onWhiteBackground(): Bitmap {
+        val flattened = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        Canvas(flattened).apply {
+            drawColor(Color.WHITE)
+            drawBitmap(this@onWhiteBackground, 0f, 0f, null)
+        }
+        return flattened
     }
 
     private fun open(uri: Uri): InputStream =
