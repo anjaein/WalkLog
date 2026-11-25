@@ -1,9 +1,12 @@
 package com.example.walklog.data.user
 
+import com.example.walklog.data.HandleTakenException
+import com.example.walklog.data.InvalidHandleException
 import com.example.walklog.data.firebase.FirestorePaths
 import com.example.walklog.data.firebase.toFirestore
 import com.example.walklog.data.firebase.userFromFirestore
 import com.example.walklog.data.model.User
+import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.flow.Flow
@@ -21,12 +24,12 @@ class FirebaseUserRepository(private val firestore: FirebaseFirestore) : UserRep
             snapshot.data?.let { userFromFirestore(uid, it) }
         }
 
-    override suspend fun isHandleAvailable(handle: String): Result<Boolean> = runCatching {
-        !handleDoc(normalize(handle)).get().await().exists()
+    override suspend fun isHandleAvailable(handle: String): Result<Boolean> = suspendRunCatching {
+        !handleDoc(validHandle(handle)).get().await().exists()
     }
 
-    override suspend fun createProfile(user: User): Result<Unit> = runCatching {
-        val handle = normalize(user.handle)
+    override suspend fun createProfile(user: User): Result<Unit> = suspendRunCatching {
+        val handle = validHandle(user.handle)
         val handleRef = handleDoc(handle)
         val profile = user.copy(
             handle = handle,
@@ -49,12 +52,17 @@ class FirebaseUserRepository(private val firestore: FirebaseFirestore) : UserRep
         if (!claimed) throw HandleTakenException(handle)
     }
 
-    override suspend fun updateProfile(user: User): Result<Unit> = runCatching {
+    override suspend fun updateProfile(user: User): Result<Unit> = suspendRunCatching {
         // handles 문서와 어긋나지 않도록 아이디와 가입 시각은 덮어쓰지 않는다.
         val fields = user.toFirestore() - "handle" - "joinedAt"
         userDoc(user.uid).update(fields).await()
         Unit
     }
 
-    private fun normalize(handle: String) = handle.trim().lowercase()
+    // '/' 가 들어간 아이디는 Firestore 문서 경로를 깨뜨리므로, 문서를 건드리기 전에 규칙부터 확인한다
+    private fun validHandle(handle: String): String {
+        val normalized = HandleRules.normalize(handle)
+        if (!HandleRules.isValid(normalized)) throw InvalidHandleException(handle)
+        return normalized
+    }
 }

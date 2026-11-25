@@ -1,6 +1,7 @@
 package com.example.walklog.data.like
 
 import com.example.walklog.data.firebase.FirestorePaths
+import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.snapshots
@@ -17,7 +18,7 @@ class FirebaseLikeRepository(private val firestore: FirebaseFirestore) : LikeRep
     override fun observeIsLiked(uid: String, logId: String): Flow<Boolean> =
         likeRef(uid, logId).snapshots().map { it.exists() }
 
-    override suspend fun setLiked(uid: String, logId: String, liked: Boolean): Result<Unit> = runCatching {
+    override suspend fun setLiked(uid: String, logId: String, liked: Boolean): Result<Unit> = suspendRunCatching {
         val markerRef = likeRef(uid, logId)
         val logRef = firestore.collection(FirestorePaths.LOGS).document(logId)
         firestore.runTransaction<Unit> { transaction ->

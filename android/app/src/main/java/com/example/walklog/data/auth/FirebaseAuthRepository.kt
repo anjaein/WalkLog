@@ -1,5 +1,6 @@
 package com.example.walklog.data.auth
 
+import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -19,20 +20,20 @@ class FirebaseAuthRepository(private val auth: FirebaseAuth) : AuthRepository {
 
     override fun currentUserIdNow(): String? = auth.currentUser?.uid
 
-    override suspend fun signUpWithEmail(email: String, password: String): Result<String> = runCatching {
+    override suspend fun signUpWithEmail(email: String, password: String): Result<String> = suspendRunCatching {
         auth.createUserWithEmailAndPassword(email, password).await().uid()
     }
 
-    override suspend fun signInWithEmail(email: String, password: String): Result<String> = runCatching {
+    override suspend fun signInWithEmail(email: String, password: String): Result<String> = suspendRunCatching {
         auth.signInWithEmailAndPassword(email, password).await().uid()
     }
 
-    override suspend fun signInWithGoogle(idToken: String): Result<String> = runCatching {
+    override suspend fun signInWithGoogle(idToken: String): Result<String> = suspendRunCatching {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential).await().uid()
     }
 
-    override suspend fun sendPasswordReset(email: String): Result<Unit> = runCatching {
+    override suspend fun sendPasswordReset(email: String): Result<Unit> = suspendRunCatching {
         auth.sendPasswordResetEmail(email).await()
         Unit
     }
@@ -41,5 +42,5 @@ class FirebaseAuthRepository(private val auth: FirebaseAuth) : AuthRepository {
         auth.signOut()
     }
 
-    private fun AuthResult.uid(): String = checkNotNull(user?.uid) { "로그인 결과에 사용자가 없어요" }
+    private fun AuthResult.uid(): String = checkNotNull(user?.uid) { "Auth result has no user" }
 }

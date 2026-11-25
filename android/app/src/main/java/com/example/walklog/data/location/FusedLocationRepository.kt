@@ -5,6 +5,7 @@ import android.content.Context
 import android.location.Location
 import android.os.Looper
 import com.example.walklog.data.model.RoutePoint
+import com.example.walklog.data.suspendRunCatching
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -40,7 +41,7 @@ class FusedLocationRepository(context: Context) : LocationRepository {
         awaitClose { client.removeLocationUpdates(callback) }
     }
 
-    override suspend fun currentLocation(): Result<RoutePoint?> = runCatching {
+    override suspend fun currentLocation(): Result<RoutePoint?> = suspendRunCatching {
         val cancellation = CancellationTokenSource()
         try {
             val location: Location? = client

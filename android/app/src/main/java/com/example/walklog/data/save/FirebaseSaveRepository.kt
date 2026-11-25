@@ -1,6 +1,7 @@
 package com.example.walklog.data.save
 
 import com.example.walklog.data.firebase.FirestorePaths
+import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -22,7 +23,7 @@ class FirebaseSaveRepository(private val firestore: FirebaseFirestore) : SaveRep
     override fun observeIsSaved(uid: String, logId: String): Flow<Boolean> =
         savesOf(uid).document(logId).snapshots().map { it.exists() }
 
-    override suspend fun setSaved(uid: String, logId: String, saved: Boolean): Result<Unit> = runCatching {
+    override suspend fun setSaved(uid: String, logId: String, saved: Boolean): Result<Unit> = suspendRunCatching {
         val markerRef = savesOf(uid).document(logId)
         val logRef = firestore.collection(FirestorePaths.LOGS).document(logId)
         firestore.runTransaction<Unit> { transaction ->

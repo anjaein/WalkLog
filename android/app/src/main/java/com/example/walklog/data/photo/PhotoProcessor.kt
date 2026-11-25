@@ -8,6 +8,7 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
+import com.example.walklog.data.PhotoUnreadableException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -27,7 +28,17 @@ class PreparedPhoto(
 
 class PhotoProcessor(private val contentResolver: ContentResolver) {
 
+    /** 사진을 열거나 읽거나 다시 압축하지 못하면 [PhotoUnreadableException]을 던진다. */
     suspend fun prepare(uri: Uri): PreparedPhoto = withContext(Dispatchers.IO) {
+        try {
+            read(uri)
+        } catch (e: Exception) {
+            // ContentResolver 는 IOException 말고도 SecurityException(권한) · IllegalArgumentException(잘못된 주소)을 던진다
+            throw PhotoUnreadableException(e)
+        }
+    }
+
+    private fun read(uri: Uri): PreparedPhoto {
         val exif = open(uri).use { ExifInterface(it) }
         val latLong = FloatArray(2)
         val hasLatLong = exif.getLatLong(latLong)
@@ -41,7 +52,7 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
             ExifInterface.ORIENTATION_NORMAL,
         )
 
-        PreparedPhoto(
+        return PreparedPhoto(
             jpeg = encodeResized(uri, orientation),
             lat = if (hasLatLong) latLong[0].toDouble() else null,
             lng = if (hasLatLong) latLong[1].toDouble() else null,
@@ -54,7 +65,7 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         open(uri).use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-            throw IOException("이미지 크기를 읽을 수 없습니다: $uri")
+            throw IOException("Cannot read image size: $uri")
         }
 
         val options = BitmapFactory.Options().apply {
@@ -65,7 +76,7 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
             }
         }
         val decoded = open(uri).use { BitmapFactory.decodeStream(it, null, options) }
-            ?: throw IOException("이미지를 디코딩할 수 없습니다: $uri")
+            ?: throw IOException("Cannot decode image: $uri")
 
         val (targetWidth, targetHeight) = scaledSize(decoded.width, decoded.height, MAX_LONG_SIDE)
         val matrix = Matrix().apply {
@@ -82,7 +93,7 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
         return try {
             ByteArrayOutputStream().use { out ->
                 if (!result.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)) {
-                    throw IOException("JPEG로 압축하지 못했습니다: $uri")
+                    throw IOException("Cannot compress image to JPEG: $uri")
                 }
                 out.toByteArray()
             }
@@ -92,7 +103,7 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
     }
 
     private fun open(uri: Uri): InputStream =
-        contentResolver.openInputStream(uri) ?: throw IOException("사진을 열 수 없습니다: $uri")
+        contentResolver.openInputStream(uri) ?: throw IOException("Cannot open photo: $uri")
 
     private fun Matrix.applyOrientation(orientation: Int) {
         when (orientation) {

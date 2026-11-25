@@ -7,6 +7,7 @@ import com.example.walklog.data.model.FeedSort
 import com.example.walklog.data.model.Visibility
 import com.example.walklog.data.model.WalkLog
 import com.example.walklog.data.photo.PhotoRepository
+import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
@@ -49,7 +50,7 @@ class FirebaseLogRepository(
             .map { it.toWalkLogs() }
     }
 
-    override suspend fun createLog(log: WalkLog): Result<String> = runCatching {
+    override suspend fun createLog(log: WalkLog): Result<String> = suspendRunCatching {
         val now = System.currentTimeMillis()
         val ref = logs.document()
         val data = log.copy(id = "", likeCount = 0, saveCount = 0, createdAt = now, updatedAt = now).toFirestore()
@@ -57,20 +58,20 @@ class FirebaseLogRepository(
         ref.id
     }
 
-    override suspend fun updateLog(log: WalkLog): Result<Unit> = runCatching {
+    override suspend fun updateLog(log: WalkLog): Result<Unit> = suspendRunCatching {
         val data = log.toFirestore() - IMMUTABLE_FIELDS + ("updatedAt" to System.currentTimeMillis())
         logs.document(log.id).update(data).await()
         Unit
     }
 
-    override suspend fun deleteLog(logId: String): Result<Unit> = runCatching {
+    override suspend fun deleteLog(logId: String): Result<Unit> = suspendRunCatching {
         val ref = logs.document(logId)
         val snapshot = ref.get().await()
         val photos = snapshot.data?.let { walkLogFromFirestore(snapshot.id, it) }?.photos.orEmpty()
         // 문서를 먼저 지운다. 사진을 먼저 지우고 문서 삭제가 실패하면 사진 없는 로그가 남는다.
         ref.delete().await()
         // 사진 파일 하나를 못 지웠다고 로그 삭제까지 실패로 돌리면 안 된다
-        photos.forEach { photo -> runCatching { photoRepository.delete(photo) } }
+        photos.forEach { photo -> suspendRunCatching { photoRepository.delete(photo) } }
         Unit
     }
 
