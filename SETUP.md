@@ -111,16 +111,17 @@
 
 터미널을 두 개 씁니다. 하나는 Firebase 에뮬레이터가 계속 차지하고, 다른 하나로 기기를 연결합니다.
 
-1. **터미널 1**: 레포 루트에서 Firebase 에뮬레이터를 켭니다. 개발하는 동안 켜 둡니다.
+1. **터미널 1**: 레포 루트에서 Firebase 에뮬레이터를 켭니다. 개발하는 동안 켜 둡니다. 켤 때 공용 가짜 데이터를 불러옵니다.
 
    ```bash
    cd firebase
-   firebase emulators:start --config firebase.emulator.json --project walklog-e37fa
+   firebase emulators:start --config firebase.emulator.json --project walklog-e37fa --import ./seed
    ```
 
    - `firebase.emulator.json`은 포트와 개발용 규칙(전부 허용)을 씁니다. 그냥 `firebase.json`은 진짜 Firebase에 배포하는 설정이라 `--config`를 빼먹지 마세요.
    - 포트: Auth 9099 · Firestore 8080 · Storage 9199 · Emulator UI 4000
-   - Firebase 에뮬레이터를 끄면 그 안의 데이터(가입한 계정, 로그, 사진)는 사라집니다.
+   - Firebase 에뮬레이터를 끄면 그 안의 데이터(가입한 계정, 로그, 사진)는 사라지고, 다시 켜면 가짜 데이터만 있는 처음 상태로 돌아갑니다.
+   - `--export-on-exit`는 붙이지 마세요. 공용 가짜 데이터가 덮어써집니다. 가짜 데이터 내용 · 시험용 계정 · 다시 만드는 법은 [firebase/SEED.md](./firebase/SEED.md).
 
 2. **터미널 2**: 새 터미널을 열고 레포 루트로 갑니다. 기기(Android 에뮬레이터 · 테스트 폰)를 켜거나 USB로 연결한 뒤 포트를 잇습니다. **기기를 켜거나 다시 연결할 때마다** 실행하세요.
 

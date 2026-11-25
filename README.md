@@ -74,6 +74,7 @@ GPS로 산책 경로를 기록하고, 찍은 사진을 지도 위 촬영 위치�
 | `firestore.dev.rules` · `storage.dev.rules` | 에뮬레이터 전용 규칙(전부 허용) |
 | `firestore.indexes.json` | Firestore 복합 색인 |
 | `connect-device.sh` | 기기에서 127.0.0.1로 에뮬레이터에 닿게 포트 잇기(adb reverse) |
+| `seed/` · `SEED.md` | 에뮬레이터를 켤 때 불러오는 공용 가짜 데이터와 그 안내 |
 
 > 시연 전 색인 올리기와 보안 규칙 기한(2026-12-14)은 [SETUP.md](./SETUP.md#3-진짜-firebase로-맞춰-보기--시연)에 정리했습니다.
 
@@ -86,7 +87,7 @@ WalkLog/
 │   ├── gradle/
 │   ├── build.gradle.kts
 │   └── settings.gradle.kts
-├── firebase/                # 백엔드 설정 · 보안 규칙
+├── firebase/                # 백엔드 설정 · 보안 규칙 · 에뮬레이터 가짜 데이터
 ├── .github/                 # 이슈 · PR 템플릿, 라벨러, README 그림(assets/)
 ├── .coderabbit.yaml         # CodeRabbit 리뷰 설정
 ├── AGENTS.md                # AI 작업 규칙
@@ -125,6 +126,7 @@ walklog/
 | 문서 | 내용 |
 | ---- | ---- |
 | [Setup](./SETUP.md) | 처음 세팅, 개발할 때마다 할 일, 진짜 Firebase로 시연하기, 자주 막히는 문제를 정리했습니다. |
+| [가짜 데이터](./firebase/SEED.md) | 에뮬레이터 가짜 데이터 내용, 시험용 계정, 다시 만드는 법을 정리했습니다. |
 | [Convention](./CONVENTION.md) | 커밋 · 브랜치 · 네이밍 컨벤션과 라벨링 필수 규칙을 정리했습니다. |
 
 ## 👥 역할
