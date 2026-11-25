@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">WalkLog</string>
+
+    <!-- 하단 냅바 -->
+    <string name="nav_home">홈</string>
+    <string name="nav_map">지도</string>
+    <string name="nav_explore">탐색</string>
 </resources>
