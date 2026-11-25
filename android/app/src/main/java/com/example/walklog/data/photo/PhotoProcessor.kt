@@ -16,6 +16,8 @@ import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import com.example.walklog.data.PhotoUnreadableException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -38,13 +40,18 @@ class PhotoProcessor(context: Context) {
     private val appContext = context.applicationContext
     private val contentResolver = appContext.contentResolver
 
+    // 사진 한 장을 디코딩 · 다시 압축하는 데 20~38MB 쯤 든다. 여러 장을 한꺼번에 올리면 IO 스레드 수만큼 동시에 돌아 메모리가 터질 수 있어서 동시 처리 수를 막는다
+    private val decodePermits = Semaphore(MAX_CONCURRENT_DECODES)
+
     /** 사진을 열거나 읽거나 다시 압축하지 못하면 [PhotoUnreadableException]을 던진다. */
-    suspend fun prepare(uri: Uri): PreparedPhoto = withContext(Dispatchers.IO) {
-        try {
-            read(uri)
-        } catch (e: Exception) {
-            // ContentResolver 는 IOException 말고도 SecurityException(권한) · IllegalArgumentException(잘못된 주소)을 던진다
-            throw PhotoUnreadableException(e)
+    suspend fun prepare(uri: Uri): PreparedPhoto = decodePermits.withPermit {
+        withContext(Dispatchers.IO) {
+            try {
+                read(uri)
+            } catch (e: Exception) {
+                // ContentResolver 는 IOException 말고도 SecurityException(권한) · IllegalArgumentException(잘못된 주소)을 던진다
+                throw PhotoUnreadableException(e)
+            }
         }
     }
 
@@ -202,6 +209,7 @@ class PhotoProcessor(context: Context) {
     private companion object {
         const val MAX_LONG_SIDE = 1600
         const val JPEG_QUALITY = 80
+        const val MAX_CONCURRENT_DECODES = 2
     }
 }
 
