@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// 진짜 Firebase Storage는 쓰지 않는다(시연 때 사진은 Cloudinary). 배포되더라도 전부 막는다.
+// 로컬 에뮬레이터는 firebase.emulator.json 으로 storage.dev.rules 를 쓴다.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
