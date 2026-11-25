@@ -13,7 +13,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 
-class FirebaseUserRepository(private val firestore: FirebaseFirestore) : UserRepository {
+class FirebaseUserRepository(
+    private val firestore: FirebaseFirestore,
+    private val currentUid: () -> String?,
+) : UserRepository {
 
     private fun userDoc(uid: String) = firestore.collection(FirestorePaths.USERS).document(uid)
 
@@ -29,23 +32,24 @@ class FirebaseUserRepository(private val firestore: FirebaseFirestore) : UserRep
     }
 
     override suspend fun createProfile(user: User): Result<Unit> = suspendRunCatching {
+        requireSignedInAs(user.uid)
         val handle = validHandle(user.handle)
         val handleRef = handleDoc(handle)
-        val profile = user.copy(
-            handle = handle,
-            joinedAt = if (user.joinedAt == 0L) System.currentTimeMillis() else user.joinedAt,
-        )
+        val newJoinedAt = if (user.joinedAt == 0L) System.currentTimeMillis() else user.joinedAt
         // 트랜잭션 안에서 던진 예외는 SDK가 감쌀 수 있어서, 결과만 돌려받고 예외는 밖에서 던진다.
         val claimed = firestore.runTransaction { tx ->
             val existing = tx.get(handleRef)
-            val oldHandle = tx.get(userDoc(user.uid)).getString("handle")
+            val existingUser = tx.get(userDoc(user.uid))
+            val oldHandle = existingUser.getString("handle")
             if (existing.exists() && existing.getString("uid") != user.uid) {
                 false
             } else {
                 // 온보딩에서 아이디를 바꿔 다시 만들면 예전 아이디를 풀어 줘야 다른 사람이 쓸 수 있다
                 if (oldHandle != null && oldHandle != handle) tx.delete(handleDoc(oldHandle))
                 tx.set(handleRef, mapOf("uid" to user.uid))
-                tx.set(userDoc(user.uid), profile.toFirestore())
+                // 온보딩을 다시 거쳐도 처음 가입한 시각은 지킨다
+                val joinedAt = (existingUser.get("joinedAt") as? Number)?.toLong()?.takeIf { it > 0L } ?: newJoinedAt
+                tx.set(userDoc(user.uid), user.copy(handle = handle, joinedAt = joinedAt).toFirestore())
                 true
             }
         }.await()
@@ -53,16 +57,29 @@ class FirebaseUserRepository(private val firestore: FirebaseFirestore) : UserRep
     }
 
     override suspend fun updateProfile(user: User): Result<Unit> = suspendRunCatching {
+        requireSignedInAs(user.uid)
         // handles 문서와 어긋나지 않도록 아이디와 가입 시각은 덮어쓰지 않는다.
         val fields = user.toFirestore() - "handle" - "joinedAt"
-        userDoc(user.uid).update(fields).await()
-        Unit
+        val ref = userDoc(user.uid)
+        val updated = firestore.runTransaction { tx ->
+            if (tx.get(ref).exists()) {
+                tx.update(ref, fields)
+                true
+            } else {
+                false
+            }
+        }.await()
+        if (!updated) throw NoSuchElementException("User not found: ${user.uid}")
+    }
+
+    private fun requireSignedInAs(uid: String) {
+        if (uid != currentUid()) throw IllegalStateException("Not the signed-in user")
     }
 
     // '/' 가 들어간 아이디는 Firestore 문서 경로를 깨뜨리므로, 문서를 건드리기 전에 규칙부터 확인한다
     private fun validHandle(handle: String): String {
         val normalized = HandleRules.normalize(handle)
-        if (!HandleRules.isValid(normalized)) throw InvalidHandleException(handle)
+        if (!HandleRules.isValid(normalized)) throw InvalidHandleException(normalized)
         return normalized
     }
 }

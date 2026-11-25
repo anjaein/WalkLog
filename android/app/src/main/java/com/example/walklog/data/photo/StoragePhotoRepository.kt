@@ -28,6 +28,5 @@ class StoragePhotoRepository(
         // getReferenceFromUrl 은 에뮬레이터 주소(http://127.0.0.1:9199/...)를 못 읽는다. 주소 끝의 .../o/{경로} 에서 경로를 꺼낸다
         val path = requireNotNull(Uri.parse(photo.url).lastPathSegment) { "No storage path in photo URL: ${photo.url}" }
         storage.reference.child(path).delete().await()
-        Unit
     }
 }

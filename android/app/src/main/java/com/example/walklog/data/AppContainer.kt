@@ -41,10 +41,12 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val appContext = context.applicationContext
 
     override val authRepository: AuthRepository by lazy { FirebaseAuthRepository(Firebase.auth) }
-    override val userRepository: UserRepository by lazy { FirebaseUserRepository(Firebase.firestore) }
-    override val logRepository: LogRepository by lazy { FirebaseLogRepository(Firebase.firestore, photoRepository) }
-    override val likeRepository: LikeRepository by lazy { FirebaseLikeRepository(Firebase.firestore) }
-    override val saveRepository: SaveRepository by lazy { FirebaseSaveRepository(Firebase.firestore) }
+    override val userRepository: UserRepository by lazy { FirebaseUserRepository(Firebase.firestore) { authRepository.currentUserIdNow() } }
+    override val logRepository: LogRepository by lazy {
+        FirebaseLogRepository(Firebase.firestore, photoRepository) { authRepository.currentUserIdNow() }
+    }
+    override val likeRepository: LikeRepository by lazy { FirebaseLikeRepository(Firebase.firestore) { authRepository.currentUserIdNow() } }
+    override val saveRepository: SaveRepository by lazy { FirebaseSaveRepository(Firebase.firestore) { authRepository.currentUserIdNow() } }
     override val locationRepository: LocationRepository by lazy { FusedLocationRepository(appContext) }
 
     // 진짜 Firebase Storage는 카드 등록이 필요해서, 평소(에뮬레이터)엔 에뮬레이터 Storage, 시연 땐 Cloudinary에 올린다
