@@ -1,8 +1,11 @@
 package com.example.walklog.data.log
 
+import com.example.walklog.data.NotFoundException
+import com.example.walklog.data.PermissionDeniedException
 import com.example.walklog.data.firebase.FirestorePaths
 import com.example.walklog.data.firebase.toFirestore
 import com.example.walklog.data.firebase.walkLogFromFirestore
+import com.example.walklog.data.mapDataErrors
 import com.example.walklog.data.model.FeedSort
 import com.example.walklog.data.model.Visibility
 import com.example.walklog.data.model.WalkLog
@@ -32,15 +35,15 @@ class FirebaseLogRepository(
 
     override fun observeLog(logId: String): Flow<WalkLog?> {
         // 잘못된 id 를 부른 자리에서 바로 죽이지 않고, 수집할 때 실패로 알린다
-        if (!LogIds.isValid(logId)) return flow<WalkLog?> { LogIds.requireValid(logId) }
+        if (!LogIds.isValid(logId)) return flow<WalkLog?> { LogIds.requireValid(logId) }.mapDataErrors()
         return logs.document(logId).snapshots().map { snapshot ->
             snapshot.data?.let { walkLogFromFirestore(snapshot.id, it) }
                 ?.takeIf { isVisibleTo(it.visibility, it.authorId, currentUid()) }
-        }
+        }.mapDataErrors()
     }
 
     override fun observeLogsByUser(uid: String, includePrivate: Boolean): Flow<List<WalkLog>> {
-        if (!UserIds.isValid(uid)) return flow<List<WalkLog>> { UserIds.requireValid(uid) }
+        if (!UserIds.isValid(uid)) return flow<List<WalkLog>> { UserIds.requireValid(uid) }.mapDataErrors()
         var query: Query = logs.whereEqualTo("authorId", uid)
         // 남의 프로필에서 includePrivate 를 잘못 넘겨도 나만 보기 로그가 새지 않게, 본인일 때만 허용한다
         val withPrivate = includePrivate && uid == currentUid()
@@ -48,11 +51,12 @@ class FirebaseLogRepository(
         return query.orderBy("startedAt", Query.Direction.DESCENDING)
             .snapshots()
             .map { it.toWalkLogs() }
+            .mapDataErrors()
     }
 
     override fun observeFeed(tag: String?, sort: FeedSort, limit: Long): Flow<List<WalkLog>> {
         // Query.limit 은 0 이하를 부른 자리에서 바로 던지므로, 수집할 때 실패로 알린다
-        if (limit <= 0) return flow<List<WalkLog>> { require(limit > 0) { "Invalid feed limit: $limit" } }
+        if (limit <= 0) return flow<List<WalkLog>> { require(limit > 0) { "Invalid feed limit: $limit" } }.mapDataErrors()
         var query: Query = logs.whereEqualTo("visibility", PUBLIC)
         normalizeTag(tag)?.let { query = query.whereArrayContains("tags", it) }
         val orderField = when (sort) {
@@ -63,11 +67,12 @@ class FirebaseLogRepository(
             .limit(limit)
             .snapshots()
             .map { it.toWalkLogs() }
+            .mapDataErrors()
     }
 
     override suspend fun createLog(log: WalkLog): Result<String> = suspendRunCatching {
         if (log.id.isNotEmpty()) LogIds.requireValid(log.id)
-        val uid = currentUid() ?: throw IllegalStateException("Not signed in")
+        val uid = currentUid() ?: throw PermissionDeniedException("Not signed in")
         val ref = if (log.id.isEmpty()) logs.document() else logs.document(log.id)
         // 트랜잭션 안에서 던진 예외는 SDK가 감쌀 수 있어서, 결과만 돌려받고 예외는 밖에서 던진다.
         val decision = firestore.runTransaction { tx ->
@@ -88,13 +93,13 @@ class FirebaseLogRepository(
             }
             result
         }.await()
-        if (decision == CreateDecision.ID_TAKEN) throw IllegalStateException("Log id already used by another author")
+        if (decision == CreateDecision.ID_TAKEN) throw PermissionDeniedException("Log id already used by another author")
         ref.id
     }
 
     override suspend fun updateLog(log: WalkLog): Result<Unit> = suspendRunCatching {
         LogIds.requireValid(log.id)
-        val uid = currentUid() ?: throw IllegalStateException("Not signed in")
+        val uid = currentUid() ?: throw PermissionDeniedException("Not signed in")
         val ref = logs.document(log.id)
         val data = log.copy(tags = normalizeTags(log.tags)).toFirestore() - IMMUTABLE_FIELDS + ("updatedAt" to System.currentTimeMillis())
         val decision = firestore.runTransaction { tx ->
@@ -104,15 +109,15 @@ class FirebaseLogRepository(
             result
         }.await()
         when (decision) {
-            ChangeDecision.NOT_FOUND -> throw NoSuchElementException("Log not found: ${log.id}")
-            ChangeDecision.NOT_AUTHOR -> throw IllegalStateException("Log belongs to another author: ${log.id}")
+            ChangeDecision.NOT_FOUND -> throw NotFoundException("Log not found: ${log.id}")
+            ChangeDecision.NOT_AUTHOR -> throw PermissionDeniedException("Log belongs to another author: ${log.id}")
             ChangeDecision.ALLOWED -> Unit
         }
     }
 
     override suspend fun deleteLog(logId: String): Result<Unit> = suspendRunCatching {
         LogIds.requireValid(logId)
-        val uid = currentUid() ?: throw IllegalStateException("Not signed in")
+        val uid = currentUid() ?: throw PermissionDeniedException("Not signed in")
         val ref = logs.document(logId)
         val outcome = firestore.runTransaction { tx ->
             val snapshot = tx.get(ref)
@@ -126,7 +131,7 @@ class FirebaseLogRepository(
             result to photos
         }.await()
         val (decision, photos) = outcome
-        if (decision == ChangeDecision.NOT_AUTHOR) throw IllegalStateException("Log belongs to another author: $logId")
+        if (decision == ChangeDecision.NOT_AUTHOR) throw PermissionDeniedException("Log belongs to another author: $logId")
         // 문서 삭제가 확정된 뒤에만 사진을 지운다. 사진부터 지우면 문서 삭제가 실패했을 때 사진 없는 로그가 남는다.
         // 사진 파일 하나를 못 지웠다고 로그 삭제까지 실패로 돌리면 안 된다.
         // 문서는 이미 지워져 재시도로는 사진을 못 찾으므로, 화면을 나가 취소돼도 정리를 끝까지 한다

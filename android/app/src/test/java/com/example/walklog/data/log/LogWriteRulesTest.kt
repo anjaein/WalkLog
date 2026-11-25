@@ -95,4 +95,27 @@ class LogWriteRulesTest {
         assertNull(normalizeTag(""))
         assertNull(normalizeTag("   "))
     }
+
+    @Test
+    fun decideMark_turnOnVisibleLog_changes() {
+        assertEquals(MarkDecision.CHANGE, decideMark(wanted = true, markerExists = false, canMark = true))
+    }
+
+    @Test
+    fun decideMark_alreadyInWantedState_noChange() {
+        assertEquals(MarkDecision.NO_CHANGE, decideMark(wanted = true, markerExists = true, canMark = true))
+        assertEquals(MarkDecision.NO_CHANGE, decideMark(wanted = false, markerExists = false, canMark = true))
+    }
+
+    @Test
+    fun decideMark_turnOnMissingOrHiddenLog_isNotFound() {
+        assertEquals(MarkDecision.LOG_NOT_FOUND, decideMark(wanted = true, markerExists = false, canMark = false))
+        assertEquals(MarkDecision.LOG_NOT_FOUND, decideMark(wanted = true, markerExists = true, canMark = false))
+    }
+
+    @Test
+    fun decideMark_turnOffMissingOrHiddenLog_stillChanges() {
+        assertEquals(MarkDecision.CHANGE, decideMark(wanted = false, markerExists = true, canMark = false))
+        assertEquals(MarkDecision.NO_CHANGE, decideMark(wanted = false, markerExists = false, canMark = false))
+    }
 }

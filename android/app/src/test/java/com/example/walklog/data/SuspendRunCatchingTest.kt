@@ -26,10 +26,18 @@ class SuspendRunCatchingTest {
     }
 
     @Test
-    fun exception_returnsSameFailure() = runBlocking {
-        val error = IllegalStateException("boom")
+    fun dataException_returnsSameFailure() = runBlocking {
+        val error = HandleTakenException("walker")
         val result = suspendRunCatching<Int> { throw error }
         assertSame(error, result.exceptionOrNull())
+    }
+
+    @Test
+    fun unknownException_becomesUnknownDataException() = runBlocking {
+        val error = IllegalStateException("boom")
+        val failure = suspendRunCatching<Int> { throw error }.exceptionOrNull()
+        assertTrue(failure is UnknownDataException)
+        assertSame(error, failure?.cause)
     }
 
     @Test
@@ -43,9 +51,17 @@ class SuspendRunCatchingTest {
     fun cancellationWhileCoroutineActive_becomesNonCancellationFailure() = runBlocking {
         val error = CancellationException("task cancelled")
         val failure = suspendRunCatching<Int> { throw error }.exceptionOrNull()
-        assertTrue(failure is IllegalStateException)
+        assertTrue(failure is UnknownDataException)
         assertFalse(failure is CancellationException)
         assertSame(error, failure?.cause)
+    }
+
+    @Test
+    fun cancellationWithCauseWhileCoroutineActive_isMappedByCause() = runBlocking {
+        val network = UnknownHostException("firestore.googleapis.com")
+        val failure = suspendRunCatching<Int> { throw CancellationException("task cancelled", network) }.exceptionOrNull()
+        assertTrue(failure is NetworkException)
+        assertSame(network, failure?.cause)
     }
 
     @Test

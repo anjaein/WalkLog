@@ -1,14 +1,23 @@
 package com.example.walklog.data.user
 
+import com.example.walklog.data.DataException
 import com.example.walklog.data.HandleTakenException
 import com.example.walklog.data.InvalidHandleException
 import com.example.walklog.data.NetworkException
+import com.example.walklog.data.NotFoundException
+import com.example.walklog.data.PermissionDeniedException
+import com.example.walklog.data.UnknownDataException
 import com.example.walklog.data.model.User
 import kotlinx.coroutines.flow.Flow
 
-/** 네트워크가 안 되면 suspend 함수들은 [NetworkException]으로 실패한다. */
+/**
+ * 모든 실패(Result · Flow 오류)는 [DataException]이다. 아래 함수마다 적은 것 말고도
+ * 네트워크가 안 되면 [NetworkException], 보안 규칙에 막히면 [PermissionDeniedException],
+ * 그 밖은 [UnknownDataException](원래 예외는 cause)으로 실패한다.
+ * cause 가 IllegalArgumentException 인 [UnknownDataException]은 잘못된 id 같은 입력 실수라 확실히 실패한 것이다. 같은 값으로 다시 시도하지 않는다.
+ */
 interface UserRepository {
-    /** 프로필이 없으면 null. uid 가 [UserIds] 규칙에 맞지 않으면 수집할 때 [IllegalArgumentException]으로 실패한다. */
+    /** 프로필이 없으면 null. uid 가 [UserIds] 규칙에 맞지 않으면 수집할 때 [UnknownDataException](cause 는 IllegalArgumentException)으로 실패한다. */
     fun observeUser(uid: String): Flow<User?>
 
     /**
@@ -24,17 +33,17 @@ interface UserRepository {
      * 이미 있으면 name 과 handle 만 바꾸고, 나머지(bio · area · photoUrl · headerColor · defaultVisibility · language · joinedAt)는 그대로 둔다.
      * 아이디를 바꿨으면 예전 아이디(handles 문서)는, 아직 이 사용자의 것일 때만 같은 트랜잭션에서 풀어 준다.
      * 아이디가 [HandleRules]에 맞지 않으면 [InvalidHandleException], 이미 누가 쓰는 아이디면 [HandleTakenException]으로 실패한다.
-     * user.uid 가 [UserIds] 규칙에 맞지 않으면 [IllegalArgumentException],
-     * 로그인한 사용자가 아니면(로그인 안 함 포함) [IllegalStateException]으로 실패한다.
+     * user.uid 가 [UserIds] 규칙에 맞지 않으면 [UnknownDataException](cause 는 IllegalArgumentException),
+     * 로그인한 사용자가 아니면(로그인 안 함 포함) [PermissionDeniedException]으로 실패한다.
      */
     suspend fun createProfile(user: User): Result<Unit>
 
     /**
      * 아이디(handle)는 바꾸지 않는다. 아이디를 뺀 나머지 프로필 값만 고친다.
      * 쓰기는 연결이 있어야 한다. [NetworkException]은 서버가 고쳤는데 응답만 못 받았을 때도 올 수 있으며, 같은 내용으로 다시 시도하면 된다.
-     * 프로필이 아직 없으면 [NoSuchElementException]으로 실패한다(처음 만들 때는 [createProfile]).
-     * user.uid 가 [UserIds] 규칙에 맞지 않으면 [IllegalArgumentException],
-     * 로그인한 사용자가 아니면(로그인 안 함 포함) [IllegalStateException]으로 실패한다.
+     * 프로필이 아직 없으면 [NotFoundException]으로 실패한다(처음 만들 때는 [createProfile]).
+     * user.uid 가 [UserIds] 규칙에 맞지 않으면 [UnknownDataException](cause 는 IllegalArgumentException),
+     * 로그인한 사용자가 아니면(로그인 안 함 포함) [PermissionDeniedException]으로 실패한다.
      */
     suspend fun updateProfile(user: User): Result<Unit>
 }
