@@ -62,6 +62,44 @@ class PhotoProcessorTest {
     }
 
     @Test
+    fun parseExifDateTime_offsetWinsOverFallbackZone() {
+        val newYork = TimeZone.getTimeZone("America/New_York")
+        // 서울 2026-11-26 09:30 = UTC 00:30
+        assertEquals(1_795_653_000_000L, parseExifDateTime("2026:11:26 09:30:00", newYork, "+09:00"))
+        assertEquals(1_795_653_000_000L, parseExifDateTime("2026:11:26 09:30:00", seoul, "+09:00"))
+    }
+
+    @Test
+    fun parseExifDateTime_negativeHalfHourAndZuluOffsets() {
+        // 09:30 at -05:30 = UTC 15:00
+        assertEquals(1_795_705_200_000L, parseExifDateTime("2026:11:26 09:30:00", seoul, "-05:30"))
+        assertEquals(1_795_685_400_000L, parseExifDateTime("2026:11:26 09:30:00", seoul, "Z"))
+        assertEquals(1_795_653_000_000L, parseExifDateTime("2026:11:26 09:30:00", seoul, "+09:00\u0000"))
+    }
+
+    @Test
+    fun parseExifDateTime_missingOrInvalidOffsetFallsBackToZone() {
+        listOf(null, "", "   :  ", "+9:00", "+0900", "09:00", "+25:00", "+09:60", "+18:30", "abc").forEach {
+            assertEquals(it.toString(), 1_795_653_000_000L, parseExifDateTime("2026:11:26 09:30:00", seoul, it))
+        }
+    }
+
+    @Test
+    fun parseExifDateTime_offsetDoesNotRescueBadDate() {
+        assertNull(parseExifDateTime("not a date", seoul, "+09:00"))
+        assertNull(parseExifDateTime(null, seoul, "+09:00"))
+    }
+
+    @Test
+    fun parseExifOffsetMillis_parsesSignedOffsets() {
+        assertEquals(32_400_000, parseExifOffsetMillis("+09:00"))
+        assertEquals(-19_800_000, parseExifOffsetMillis("-05:30"))
+        assertEquals(0, parseExifOffsetMillis("Z"))
+        assertEquals(64_800_000, parseExifOffsetMillis("+18:00"))
+        assertNull(parseExifOffsetMillis("+18:01"))
+    }
+
+    @Test
     fun validPhotoLocation_keepsNormalCoordinates() {
         assertEquals(37.555 to 126.895, validPhotoLocation(37.555, 126.895))
         assertEquals(-33.86 to 151.2, validPhotoLocation(-33.86, 151.2))

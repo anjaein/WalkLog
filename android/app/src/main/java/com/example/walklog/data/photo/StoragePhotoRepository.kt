@@ -6,6 +6,7 @@ import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
 import kotlinx.coroutines.tasks.await
+import kotlin.coroutines.cancellation.CancellationException
 import java.util.UUID
 
 class StoragePhotoRepository(
@@ -19,7 +20,14 @@ class StoragePhotoRepository(
         val metadata = StorageMetadata.Builder()
             .setContentType("image/jpeg")
             .build()
-        ref.putBytes(photo.jpeg, metadata).await()
+        val task = ref.putBytes(photo.jpeg, metadata)
+        try {
+            task.await()
+        } catch (e: CancellationException) {
+            // await 는 기다리기만 멈추고 업로드는 계속돼서, 직접 취소하지 않으면 주인 없는 파일이 남는다
+            task.cancel()
+            throw e
+        }
         val url = ref.downloadUrl.await().toString()
         LogPhoto(url = url, lat = photo.lat, lng = photo.lng, takenAt = photo.takenAt)
     }.wrapUploadFailure()

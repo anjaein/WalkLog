@@ -9,14 +9,14 @@ class UserIdsTest {
 
     @Test
     fun isValid_acceptsAllowedUids() {
-        listOf("Xy3kP9qLmN0aBcD1eF2gH3iJ4kL5", "user-1", "__x", "x__", "a").forEach {
+        listOf("Xy3kP9qLmN0aBcD1eF2gH3iJ4kL5", "user-1", "__x", "x__", "a", "a.b", "...", ".a").forEach {
             assertTrue(it, UserIds.isValid(it))
         }
     }
 
     @Test
     fun isValid_rejectsBrokenUids() {
-        listOf("", "   ", "\n", "a/b", "/", "__x__", "____").forEach {
+        listOf("", "   ", "\n", "a/b", "/", "__x__", "____", ".", "..").forEach {
             assertFalse(it, UserIds.isValid(it))
         }
     }

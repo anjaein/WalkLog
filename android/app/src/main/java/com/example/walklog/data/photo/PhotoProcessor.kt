@@ -23,6 +23,7 @@ import java.io.InputStream
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.SimpleTimeZone
 import java.util.TimeZone
 
 class PreparedPhoto(
@@ -55,11 +56,7 @@ class PhotoProcessor(context: Context) {
         } else {
             null
         }
-        val takenAt = parseExifDateTime(
-            exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
-                ?: exif.getAttribute(ExifInterface.TAG_DATETIME),
-            TimeZone.getDefault(),
-        )
+        val takenAt = readTakenAt(exif)
         val orientation = exif.getAttributeInt(
             ExifInterface.TAG_ORIENTATION,
             ExifInterface.ORIENTATION_NORMAL,
@@ -71,6 +68,24 @@ class PhotoProcessor(context: Context) {
             lng = location?.second,
             takenAt = takenAt,
         )
+    }
+
+    // 날짜 태그와 짝이 되는 시간대 태그를 함께 읽는다. 다른 짝의 시간대를 섞으면 시각이 틀어질 수 있다
+    private fun readTakenAt(exif: ExifInterface): Long? {
+        val original = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+        val (dateTime, offset) = if (original != null) {
+            original to readOffset(exif, original = true)
+        } else {
+            exif.getAttribute(ExifInterface.TAG_DATETIME) to readOffset(exif, original = false)
+        }
+        return parseExifDateTime(dateTime, TimeZone.getDefault(), offset)
+    }
+
+    // 플랫폼 ExifInterface 는 API 30부터 시간대 태그를 읽는다. 그 아래에서는 기기 시간대로 계산된다
+    private fun readOffset(exif: ExifInterface, original: Boolean): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        val tag = if (original) ExifInterface.TAG_OFFSET_TIME_ORIGINAL else ExifInterface.TAG_OFFSET_TIME
+        return exif.getAttribute(tag)
     }
 
     // 비트맵을 새로 JPEG로 압축하면 EXIF가 따라오지 않는다. 올리는 파일에서 위치 정보가 빠지는 건 이 때문이다.
@@ -222,17 +237,42 @@ internal fun scaledSize(width: Int, height: Int, maxLongSide: Int): Pair<Int, In
     return scaledWidth to scaledHeight
 }
 
-/** EXIF 촬영 시각("yyyy:MM:dd HH:mm:ss")에는 시간대가 없어서, 찍은 기기의 시간대로 보고 [timeZone]을 받는다. */
-internal fun parseExifDateTime(value: String?, timeZone: TimeZone): Long? {
-    // 일부 기기는 문자열 끝에 NUL 문자를 붙여서 공백과 함께 잘라낸다.
-    val text = value?.trim { it <= ' ' }
+/**
+ * EXIF 촬영 시각("yyyy:MM:dd HH:mm:ss")을 epoch 밀리초로 바꾼다.
+ * 시간대 태그([offset], "+09:00" 꼴)가 올바르면 그 시간대로, 없거나 잘못됐으면 찍은 기기의 시간대로 보고 [timeZone]을 쓴다.
+ */
+internal fun parseExifDateTime(value: String?, timeZone: TimeZone, offset: String? = null): Long? {
+    val text = value?.trimExif()
     if (text.isNullOrEmpty()) return null
+    val zone = parseExifOffsetMillis(offset)?.let { SimpleTimeZone(it, "EXIF") } ?: timeZone
     val format = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).apply {
         isLenient = false
-        this.timeZone = timeZone
+        this.timeZone = zone
     }
     val position = ParsePosition(0)
     val date = format.parse(text, position) ?: return null
     if (position.index != text.length) return null
     return date.time
 }
+
+private val EXIF_OFFSET = Regex("^([+-])(\\d{2}):(\\d{2})$")
+
+// 모르는 시간대는 "   :  " 같은 공백으로 채워 오기도 해서, 꼴이 맞지 않으면 null 로 보고 기기 시간대로 넘긴다
+internal fun parseExifOffsetMillis(offset: String?): Int? {
+    val text = offset?.trimExif()
+    if (text.isNullOrEmpty()) return null
+    if (text == "Z") return 0
+    val match = EXIF_OFFSET.matchEntire(text) ?: return null
+    val (sign, hours, minutes) = match.destructured
+    val h = hours.toInt()
+    val m = minutes.toInt()
+    if (h > MAX_OFFSET_HOURS || m >= 60 || (h == MAX_OFFSET_HOURS && m != 0)) return null
+    val millis = (h * 60 + m) * 60_000
+    return if (sign == "-") -millis else millis
+}
+
+// java.time.ZoneOffset 과 같은 한계(±18:00)
+private const val MAX_OFFSET_HOURS = 18
+
+// 일부 기기는 문자열 끝에 NUL 문자를 붙인다. trim() 은 NUL 을 공백으로 보지 않아서 제어 문자까지 함께 잘라낸다
+private fun String.trimExif(): String = trim { it <= ' ' }
