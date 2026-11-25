@@ -3,6 +3,7 @@ package com.example.walklog.data.model
 /**
  * 산책 로그 하나. Firestore logs/{logId} 문서와 같은 모양이다.
  * 내 로그와 남의 로그(탐색 피드)를 한 컬렉션에 두고, 공개 범위와 작성자로 나눈다. 시각은 모두 epoch 밀리초.
+ * 공개 범위는 기본값을 두지 않는다. 새 로그를 만드는 화면이 User.defaultVisibility 를 넘겨, 설정과 다르게 공개되는 일이 없게 한다.
  */
 data class WalkLog(
     val id: String = "",
@@ -14,7 +15,7 @@ data class WalkLog(
     val minutes: Int,
     val distanceKm: Double,
     val place: String,
-    val visibility: Visibility = Visibility.PUBLIC,
+    val visibility: Visibility,
     val tags: List<String> = emptyList(),
     val likeCount: Int = 0,
     val saveCount: Int = 0,

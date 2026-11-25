@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 // 여기 쿼리를 바꾸면 firebase/firestore.indexes.json 의 복합 색인도 같이 맞춰야 한다(에뮬레이터는 색인 없이도 돌아서 놓치기 쉽다).
 class FirebaseLogRepository(
@@ -53,7 +54,7 @@ class FirebaseLogRepository(
         // Query.limit 은 0 이하를 부른 자리에서 바로 던지므로, 수집할 때 실패로 알린다
         if (limit <= 0) return flow<List<WalkLog>> { require(limit > 0) { "Invalid feed limit: $limit" } }
         var query: Query = logs.whereEqualTo("visibility", PUBLIC)
-        if (tag != null) query = query.whereArrayContains("tags", tag)
+        normalizeTag(tag)?.let { query = query.whereArrayContains("tags", it) }
         val orderField = when (sort) {
             FeedSort.RECENT -> "createdAt"
             FeedSort.POPULAR -> "likeCount"
@@ -129,8 +130,11 @@ class FirebaseLogRepository(
         // 문서 삭제가 확정된 뒤에만 사진을 지운다. 사진부터 지우면 문서 삭제가 실패했을 때 사진 없는 로그가 남는다.
         // 사진 파일 하나를 못 지웠다고 로그 삭제까지 실패로 돌리면 안 된다.
         // 문서는 이미 지워져 재시도로는 사진을 못 찾으므로, 화면을 나가 취소돼도 정리를 끝까지 한다
+        // 다만 오프라인이면 Storage 가 몇 분씩 재시도하며 삭제 결과를 붙잡으므로, 정리는 정해진 시간까지만 기다린다(못 지운 사진은 남는다)
         withContext(NonCancellable) {
-            photos.forEach { photo -> suspendRunCatching { photoRepository.delete(photo) } }
+            withTimeoutOrNull(PHOTO_CLEANUP_TIMEOUT_MS) {
+                photos.forEach { photo -> suspendRunCatching { photoRepository.delete(photo) } }
+            }
         }
     }
 
@@ -139,6 +143,8 @@ class FirebaseLogRepository(
 
     private companion object {
         val PUBLIC = Visibility.PUBLIC.name.lowercase()
+
+        const val PHOTO_CLEANUP_TIMEOUT_MS = 10_000L
 
         // 좋아요 · 저장 수는 트랜잭션으로만 바뀌고, 작성자 · 작성 시각은 처음 값을 지킨다
         val IMMUTABLE_FIELDS = setOf("likeCount", "saveCount", "authorId", "createdAt")

@@ -12,7 +12,10 @@ interface AuthRepository {
 
     suspend fun signInWithEmail(email: String, password: String): Result<String>
 
-    /** Credential Manager로 받은 Google ID 토큰으로 로그인한다. 토큰을 받는 화면 코드는 온보딩 담당이 만든다. */
+    /**
+     * Google ID 토큰으로 로그인한다. 토큰을 받는 Credential Manager 단계도 화면에서 직접 부르지 않고
+     * data 쪽에 감싸야 한다(AGENTS.md). 그 부분은 온보딩 작업에서 이어서 만든다.
+     */
     suspend fun signInWithGoogle(idToken: String): Result<String>
 
     suspend fun sendPasswordReset(email: String): Result<Unit>

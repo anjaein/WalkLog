@@ -51,7 +51,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     // 진짜 Firebase Storage는 카드 등록이 필요해서, 평소(에뮬레이터)엔 에뮬레이터 Storage, 시연 땐 Cloudinary에 올린다
     override val photoRepository: PhotoRepository by lazy {
-        val processor = PhotoProcessor(appContext.contentResolver)
+        val processor = PhotoProcessor(appContext)
         if (BuildConfig.USE_EMULATOR) {
             StoragePhotoRepository(processor, Firebase.storage)
         } else {

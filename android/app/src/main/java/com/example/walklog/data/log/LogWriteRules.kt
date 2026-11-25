@@ -30,4 +30,7 @@ fun isVisibleTo(visibility: Visibility, authorId: String?, uid: String?): Boolea
 
 /** 앞뒤 공백을 지우고, 빈 태그와 겹치는 태그를 뺀다. 순서는 처음 나온 순서를 지킨다. */
 fun normalizeTags(tags: List<String>): List<String> =
-    tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    tags.mapNotNull(::normalizeTag).distinct()
+
+/** 저장할 때와 같은 규칙으로 태그 하나를 다듬는다. 비면 null. */
+fun normalizeTag(tag: String?): String? = tag?.trim()?.takeIf { it.isNotEmpty() }

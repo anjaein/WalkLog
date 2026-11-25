@@ -3,6 +3,7 @@ package com.example.walklog.data.log
 import com.example.walklog.data.model.Visibility
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -85,5 +86,13 @@ class LogWriteRulesTest {
     fun normalizeTags_keepsFirstOrderAndCase() {
         assertEquals(listOf("b", "a", "A"), normalizeTags(listOf("b", "a", "A", "b")))
         assertEquals(emptyList<String>(), normalizeTags(emptyList()))
+    }
+
+    @Test
+    fun normalizeTag_trimsAndBlankIsNull() {
+        assertEquals("hangang", normalizeTag("  hangang "))
+        assertNull(normalizeTag(null))
+        assertNull(normalizeTag(""))
+        assertNull(normalizeTag("   "))
     }
 }

@@ -1,6 +1,8 @@
 package com.example.walklog.data.photo
 
-import android.content.ContentResolver
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -10,6 +12,8 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
+import androidx.core.content.ContextCompat
 import com.example.walklog.data.PhotoUnreadableException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,7 +32,10 @@ class PreparedPhoto(
     val takenAt: Long?,
 )
 
-class PhotoProcessor(private val contentResolver: ContentResolver) {
+class PhotoProcessor(context: Context) {
+
+    private val appContext = context.applicationContext
+    private val contentResolver = appContext.contentResolver
 
     /** 사진을 열거나 읽거나 다시 압축하지 못하면 [PhotoUnreadableException]을 던진다. */
     suspend fun prepare(uri: Uri): PreparedPhoto = withContext(Dispatchers.IO) {
@@ -41,9 +48,13 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
     }
 
     private fun read(uri: Uri): PreparedPhoto {
-        val exif = open(uri).use { ExifInterface(it) }
+        val exif = readExif(uri)
         val latLong = FloatArray(2)
-        val hasLatLong = exif.getLatLong(latLong)
+        val location = if (exif.getLatLong(latLong)) {
+            validPhotoLocation(latLong[0].toDouble(), latLong[1].toDouble())
+        } else {
+            null
+        }
         val takenAt = parseExifDateTime(
             exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
                 ?: exif.getAttribute(ExifInterface.TAG_DATETIME),
@@ -56,8 +67,8 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
 
         return PreparedPhoto(
             jpeg = encodeResized(uri, orientation),
-            lat = if (hasLatLong) latLong[0].toDouble() else null,
-            lng = if (hasLatLong) latLong[1].toDouble() else null,
+            lat = location?.first,
+            lng = location?.second,
             takenAt = takenAt,
         )
     }
@@ -128,6 +139,33 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
     private fun open(uri: Uri): InputStream =
         contentResolver.openInputStream(uri) ?: throw IOException("Cannot open photo: $uri")
 
+    // Android 10+ 의 MediaStore 는 ACCESS_MEDIA_LOCATION 권한으로 원본을 요청하지 않으면 EXIF 위치를 지운(0으로 채운) 사본을 준다.
+    // 원본을 못 열거나 원본의 EXIF 를 못 읽으면 일반 주소로 다시 읽고, 위치만 비게 된다
+    private fun readExif(uri: Uri): ExifInterface {
+        openOriginal(uri)?.let { original ->
+            try {
+                return original.use { ExifInterface(it) }
+            } catch (e: Exception) {
+                // 아래에서 일반 주소로 다시 읽는다
+            }
+        }
+        return open(uri).use { ExifInterface(it) }
+    }
+
+    private fun openOriginal(uri: Uri): InputStream? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            uri.authority != MediaStore.AUTHORITY ||
+            ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_MEDIA_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return null
+        }
+        return try {
+            contentResolver.openInputStream(MediaStore.setRequireOriginal(uri))
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun Matrix.applyOrientation(orientation: Int) {
         when (orientation) {
             ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> postScale(-1f, 1f)
@@ -150,6 +188,17 @@ class PhotoProcessor(private val contentResolver: ContentResolver) {
         const val MAX_LONG_SIDE = 1600
         const val JPEG_QUALITY = 80
     }
+}
+
+/**
+ * EXIF 위치가 쓸 수 있는 값이면 (위도, 경도), 아니면 null.
+ * 위치를 지운 사진은 (0, 0)으로 읽히는 경우가 많아서, 정확히 (0, 0)도 위치 없음으로 본다.
+ */
+internal fun validPhotoLocation(lat: Double, lng: Double): Pair<Double, Double>? {
+    if (!lat.isFinite() || !lng.isFinite()) return null
+    if (lat !in -90.0..90.0 || lng !in -180.0..180.0) return null
+    if (lat == 0.0 && lng == 0.0) return null
+    return lat to lng
 }
 
 /** 디코딩한 긴 변이 [maxLongSide] 아래로 내려가지 않는 가장 큰 2의 거듭제곱. */

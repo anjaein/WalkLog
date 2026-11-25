@@ -60,4 +60,32 @@ class PhotoProcessorTest {
         assertNull(parseExifDateTime("0000:00:00 00:00:00", seoul))
         assertNull(parseExifDateTime("2026:11:26 09:30:00 extra", seoul))
     }
+
+    @Test
+    fun validPhotoLocation_keepsNormalCoordinates() {
+        assertEquals(37.555 to 126.895, validPhotoLocation(37.555, 126.895))
+        assertEquals(-33.86 to 151.2, validPhotoLocation(-33.86, 151.2))
+        assertEquals(90.0 to -180.0, validPhotoLocation(90.0, -180.0))
+        assertEquals(0.0 to 126.9, validPhotoLocation(0.0, 126.9))
+    }
+
+    @Test
+    fun validPhotoLocation_redactedZeroIsNull() {
+        assertNull(validPhotoLocation(0.0, 0.0))
+    }
+
+    @Test
+    fun validPhotoLocation_outOfRangeIsNull() {
+        assertNull(validPhotoLocation(90.1, 126.9))
+        assertNull(validPhotoLocation(-90.1, 126.9))
+        assertNull(validPhotoLocation(37.5, 180.1))
+        assertNull(validPhotoLocation(37.5, -180.1))
+    }
+
+    @Test
+    fun validPhotoLocation_nonFiniteIsNull() {
+        assertNull(validPhotoLocation(Double.NaN, 126.9))
+        assertNull(validPhotoLocation(37.5, Double.POSITIVE_INFINITY))
+        assertNull(validPhotoLocation(Double.NEGATIVE_INFINITY, Double.NaN))
+    }
 }
