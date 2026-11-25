@@ -26,7 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.walklog.R
 import com.example.walklog.ui.theme.WalkLogTheme
 
-enum class NavTab(@StringRes val labelRes: Int) {
+enum class NavTab(@param:StringRes val labelRes: Int) {
     HOME(R.string.nav_home),
     MAP(R.string.nav_map),
     EXPLORE(R.string.nav_explore),
