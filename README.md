@@ -18,13 +18,13 @@ GPS로 산책 경로를 기록하고, 찍은 사진을 지도 위 촬영 위치�
 
 ## 📱 화면
 
-<table>
+<table align="center">
   <tr>
-    <td align="center"><img src=".github/assets/screen-home.jpg" width="160" alt="홈: 지금 걷는 중인 산책과 내 로그 위젯, 최근 로그 카드" /></td>
-    <td align="center"><img src=".github/assets/screen-log-new.jpg" width="160" alt="로그 남기기: 코스 위에 사진 핀을 꽂고 사진을 고르는 화면" /></td>
-    <td align="center"><img src=".github/assets/screen-log-detail.jpg" width="160" alt="로그 상세: 글, 코스 지도, 걸은 시간 · 거리, 사진 모음" /></td>
-    <td align="center"><img src=".github/assets/screen-map.jpg" width="160" alt="지도: 사진 핀이 꽂힌 코스와 따라 걷기 카드" /></td>
-    <td align="center"><img src=".github/assets/screen-explore.jpg" width="160" alt="탐색: 내 주변 · 단풍 · 야경 같은 필터와 코스 카드 목록" /></td>
+    <td align="center"><img src=".github/assets/screen-home.jpg" width="130" alt="홈: 지금 걷는 중인 산책과 내 로그 위젯, 최근 로그 카드" /></td>
+    <td align="center"><img src=".github/assets/screen-log-new.jpg" width="130" alt="로그 남기기: 코스 위에 사진 핀을 꽂고 사진을 고르는 화면" /></td>
+    <td align="center"><img src=".github/assets/screen-log-detail.jpg" width="130" alt="로그 상세: 글, 코스 지도, 걸은 시간 · 거리, 사진 모음" /></td>
+    <td align="center"><img src=".github/assets/screen-map.jpg" width="130" alt="지도: 사진 핀이 꽂힌 코스와 따라 걷기 카드" /></td>
+    <td align="center"><img src=".github/assets/screen-explore.jpg" width="130" alt="탐색: 내 주변 · 단풍 · 야경 같은 필터와 코스 카드 목록" /></td>
   </tr>
   <tr>
     <td align="center"><sub>홈</sub></td>
@@ -35,7 +35,7 @@ GPS로 산책 경로를 기록하고, 찍은 사진을 지도 위 촬영 위치�
   </tr>
 </table>
 
-<sub>피그마 시안 화면이라 실제 앱과 다를 수 있습니다. (사진: Unsplash)</sub>
+<p align="center"><sub>피그마 시안 화면이라 실제 앱과 다를 수 있습니다. (사진: Unsplash)</sub></p>
 
 ## ✨ 주요 기능
 
