@@ -15,7 +15,7 @@ class AuthInputRulesTest {
     }
 
     @Test
-    fun signUp_blankPassword_isWeakPassword() {
+    fun signUp_emptyPassword_isWeakPassword() {
         assertTrue(signUpInputFailure("a@b.com", "") is WeakPasswordException)
     }
 
@@ -25,8 +25,14 @@ class AuthInputRulesTest {
     }
 
     @Test
-    fun signIn_blankPassword_isInvalidCredentials() {
-        assertTrue(signInInputFailure("a@b.com", " ") is InvalidCredentialsException)
+    fun signIn_emptyPassword_isInvalidCredentials() {
+        assertTrue(signInInputFailure("a@b.com", "") is InvalidCredentialsException)
+    }
+
+    @Test
+    fun whitespaceOnlyPassword_passesToFirebase() {
+        assertNull(signUpInputFailure("a@b.com", "      "))
+        assertNull(signInInputFailure("a@b.com", "      "))
     }
 
     @Test
