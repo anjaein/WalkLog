@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// 로컬 에뮬레이터 전용 개발 규칙: 모두 허용한다.
+// firebase.emulator.json 에서만 쓴다. 배포용 규칙은 storage.rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}
