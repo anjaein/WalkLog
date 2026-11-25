@@ -70,7 +70,8 @@ interface LogRepository {
      * 로그인하지 않았거나 저장된 작성자가 로그인한 사용자가 아니면 [PermissionDeniedException],
      * logId 가 [LogIds] 규칙에 맞지 않으면 [UnknownDataException]으로 실패한다.
      * 쓰기는 연결이 있어야 한다. [NetworkException]은 서버가 지웠는데 응답만 못 받았을 때도 올 수 있다.
-     * 사진 파일은 로그 문서가 지워진 뒤에 지우며, 사진을 못 지워도 실패로 돌리지 않는다.
+     * 사진 파일은 로그 문서가 지워진 뒤에 지우며, 사진을 못 지워도 실패로 돌리지 않는다(사진 정리는 최대 10초까지만 기다린다).
+     * 한 번 부르면 화면을 나가 호출한 코루틴이 취소돼도 삭제와 사진 정리를 끝까지 한다. 취소된 쪽은 성공 · 실패 결과 대신 CancellationException 을 받는다.
      * 알려진 문제: 서버가 로그를 지운 뒤 응답을 못 받으면, 재시도는 지울 로그를 못 찾아 성공하고 사진 파일은 남을 수 있다(서버 쪽 정리는 없다).
      */
     suspend fun deleteLog(logId: String): Result<Unit>

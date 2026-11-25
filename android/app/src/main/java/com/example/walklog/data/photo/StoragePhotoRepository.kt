@@ -5,7 +5,10 @@ import com.example.walklog.data.model.LogPhoto
 import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.cancellation.CancellationException
 import java.util.UUID
 
@@ -28,7 +31,15 @@ class StoragePhotoRepository(
             task.cancel()
             throw e
         }
-        val url = ref.downloadUrl.await().toString()
+        val url = try {
+            ref.downloadUrl.await().toString()
+        } catch (e: Throwable) {
+            // 파일은 이미 올라갔는데 주소를 못 돌려주면 아무도 그 파일을 가리키지 않게 되므로, 한 번만 지워 보고 원래 실패를 그대로 올린다
+            withContext(NonCancellable) {
+                withTimeoutOrNull(CLEANUP_TIMEOUT_MS) { runCatching { ref.delete().await() } }
+            }
+            throw e
+        }
         LogPhoto(url = url, lat = photo.lat, lng = photo.lng, takenAt = photo.takenAt)
     }.wrapUploadFailure()
 
@@ -42,5 +53,6 @@ class StoragePhotoRepository(
 
     private companion object {
         const val UPLOAD_FOLDER = "photos/"
+        const val CLEANUP_TIMEOUT_MS = 10_000L
     }
 }

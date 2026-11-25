@@ -17,6 +17,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -119,24 +121,25 @@ class FirebaseLogRepository(
         LogIds.requireValid(logId)
         val uid = currentUid() ?: throw PermissionDeniedException("Not signed in")
         val ref = logs.document(logId)
-        val outcome = firestore.runTransaction { tx ->
-            val snapshot = tx.get(ref)
-            val result = decideChange(snapshot.exists(), snapshot.getString("authorId"), uid)
-            val photos = if (result == ChangeDecision.ALLOWED) {
-                tx.delete(ref)
-                snapshot.data?.let { walkLogFromFirestore(snapshot.id, it) }?.photos.orEmpty()
-            } else {
-                emptyList()
-            }
-            result to photos
-        }.await()
-        val (decision, photos) = outcome
-        if (decision == ChangeDecision.NOT_AUTHOR) throw PermissionDeniedException("Log belongs to another author: $logId")
-        // 문서 삭제가 확정된 뒤에만 사진을 지운다. 사진부터 지우면 문서 삭제가 실패했을 때 사진 없는 로그가 남는다.
-        // 사진 파일 하나를 못 지웠다고 로그 삭제까지 실패로 돌리면 안 된다.
-        // 문서는 이미 지워져 재시도로는 사진을 못 찾으므로, 화면을 나가 취소돼도 정리를 끝까지 한다
-        // 다만 오프라인이면 Storage 가 몇 분씩 재시도하며 삭제 결과를 붙잡으므로, 정리는 정해진 시간까지만 기다린다(못 지운 사진은 남는다)
-        withContext(NonCancellable) {
+        // 화면을 나가 취소돼도 트랜잭션은 서버에서 그대로 끝나는데, 그 뒤 사진 정리만 빠지면 문서가 지워져 재시도로도 사진을 못 찾는다.
+        // 그래서 사용자가 확인한 삭제는 트랜잭션부터 사진 정리까지 취소와 상관없이 끝까지 한다
+        finishEvenIfCancelled {
+            val outcome = firestore.runTransaction { tx ->
+                val snapshot = tx.get(ref)
+                val result = decideChange(snapshot.exists(), snapshot.getString("authorId"), uid)
+                val photos = if (result == ChangeDecision.ALLOWED) {
+                    tx.delete(ref)
+                    snapshot.data?.let { walkLogFromFirestore(snapshot.id, it) }?.photos.orEmpty()
+                } else {
+                    emptyList()
+                }
+                result to photos
+            }.await()
+            val (decision, photos) = outcome
+            if (decision == ChangeDecision.NOT_AUTHOR) throw PermissionDeniedException("Log belongs to another author: $logId")
+            // 문서 삭제가 확정된 뒤에만 사진을 지운다. 사진부터 지우면 문서 삭제가 실패했을 때 사진 없는 로그가 남는다.
+            // 사진 파일 하나를 못 지웠다고 로그 삭제까지 실패로 돌리면 안 된다.
+            // 다만 오프라인이면 Storage 가 몇 분씩 재시도하며 삭제 결과를 붙잡으므로, 정리는 정해진 시간까지만 기다린다(못 지운 사진은 남는다)
             withTimeoutOrNull(PHOTO_CLEANUP_TIMEOUT_MS) {
                 photos.forEach { photo -> suspendRunCatching { photoRepository.delete(photo) } }
             }
@@ -154,4 +157,14 @@ class FirebaseLogRepository(
         // 좋아요 · 저장 수는 트랜잭션으로만 바뀌고, 작성자 · 작성 시각은 처음 값을 지킨다
         val IMMUTABLE_FIELDS = setOf("likeCount", "saveCount", "authorId", "createdAt")
     }
+}
+
+/**
+ * [block]을 취소와 상관없이 끝까지 실행한다. 다만 부른 쪽이 그사이 취소됐으면 결과 대신 CancellationException 을 던진다.
+ * withContext 는 디스패처가 바뀔 때만 돌아오면서 취소를 확인하는데 NonCancellable 은 디스패처를 바꾸지 않아서, 직접 확인한다
+ */
+internal suspend fun <T> finishEvenIfCancelled(block: suspend () -> T): T {
+    val result = withContext(NonCancellable) { block() }
+    currentCoroutineContext().ensureActive()
+    return result
 }

@@ -52,25 +52,31 @@ class FirebaseUserRepository(
             // 트랜잭션은 모든 읽기를 쓰기보다 먼저 해야 한다
             val existing = tx.get(handleRef)
             val existingUser = tx.get(userRef)
+            val oldHandle = existingUser.getString("handle")
             // 저장된 값이 규칙에 안 맞으면 문서 경로를 만들 수 없으니 풀어 줄 대상에서 뺀다
-            val oldHandleRef = existingUser.getString("handle")
-                ?.takeIf { it != handle && HandleRules.isValid(it) }
-                ?.let { handleDoc(it) }
-            val oldHandleOwner = oldHandleRef?.let { tx.get(it).getString("uid") }
-            if (existing.exists() && existing.getString("uid") != user.uid) {
-                false
-            } else {
-                // 온보딩에서 아이디를 바꿔 다시 만들면 예전 아이디를 풀어 줘야 다른 사람이 쓸 수 있다.
-                // 그사이 다른 사람이 그 아이디를 차지했을 수 있어서, 아직 내 것일 때만 지운다
-                if (oldHandleRef != null && oldHandleOwner == user.uid) tx.delete(oldHandleRef)
-                tx.set(handleRef, mapOf("uid" to user.uid))
-                if (existingUser.exists()) {
-                    // 온보딩을 다시 거쳐도 이미 고친 프로필 값과 처음 가입한 시각은 지킨다
-                    tx.update(userRef, mapOf("name" to user.name, "handle" to handle))
-                } else {
-                    tx.set(userRef, user.copy(handle = handle, joinedAt = newJoinedAt).toFirestore())
+            val oldHandleOwner = releaseCandidate(oldHandle, handle)?.let { tx.get(handleDoc(it)).getString("uid") }
+            val decision = decideClaim(
+                newHandle = handle,
+                newHandleExists = existing.exists(),
+                newHandleOwner = existing.getString("uid"),
+                oldHandle = oldHandle,
+                oldHandleOwner = oldHandleOwner,
+                myUid = user.uid,
+            )
+            when (decision) {
+                ClaimDecision.Taken -> false
+                is ClaimDecision.Claim -> {
+                    // 온보딩에서 아이디를 바꿔 다시 만들면 예전 아이디를 풀어 줘야 다른 사람이 쓸 수 있다
+                    decision.releaseHandle?.let { tx.delete(handleDoc(it)) }
+                    tx.set(handleRef, mapOf("uid" to user.uid))
+                    if (existingUser.exists()) {
+                        // 온보딩을 다시 거쳐도 이미 고친 프로필 값과 처음 가입한 시각은 지킨다
+                        tx.update(userRef, mapOf("name" to user.name, "handle" to handle))
+                    } else {
+                        tx.set(userRef, user.copy(handle = handle, joinedAt = newJoinedAt).toFirestore())
+                    }
+                    true
                 }
-                true
             }
         }.await()
         if (!claimed) throw HandleTakenException(handle)

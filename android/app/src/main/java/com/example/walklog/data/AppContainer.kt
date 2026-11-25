@@ -53,9 +53,18 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val photoRepository: PhotoRepository by lazy {
         val processor = PhotoProcessor(appContext)
         if (BuildConfig.USE_EMULATOR) {
-            StoragePhotoRepository(processor, Firebase.storage)
+            // 기본값이면 오프라인에서 업로드는 10분, 주소 받기 · 삭제는 2분 동안 재시도하며 결과를 붙잡아서, 30초 안에 실패로 돌려받는다
+            val storage = Firebase.storage.apply {
+                maxUploadRetryTimeMillis = STORAGE_RETRY_TIME_MS
+                maxOperationRetryTimeMillis = STORAGE_RETRY_TIME_MS
+            }
+            StoragePhotoRepository(processor, storage)
         } else {
             CloudinaryPhotoRepository(processor, BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET)
         }
+    }
+
+    private companion object {
+        const val STORAGE_RETRY_TIME_MS = 30_000L
     }
 }

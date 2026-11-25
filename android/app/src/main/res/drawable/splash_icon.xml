@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48"
+    tools:ignore="VectorRaster">
+    <!-- 시스템 스플래시는 아이콘을 지름 2/3 원으로 자른다. 아래쪽 점이 잘리지 않게 줄이고 올린다 -->
+    <group
+        android:pivotX="24"
+        android:pivotY="24.6"
+        android:scaleX="0.92"
+        android:scaleY="0.92"
+        android:translateY="-0.6">
+        <path
+            android:pathData="M17.95,37.27 L10.4,27.8 L13.09,16 L24,10.75 L34.91,16 L37.6,27.8 L30.05,37.27 L25.21,37.27"
+            android:strokeWidth="3.4"
+            android:strokeColor="@color/splash_foreground"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="@color/splash_foreground"
+            android:pathData="M15.06,37.27 a2.89,2.89 0 1,0 5.78,0 a2.89,2.89 0 1,0 -5.78,0 Z" />
+        <path
+            android:fillColor="@color/splash_background"
+            android:pathData="M22.76,37.27 a2.45,2.45 0 1,0 4.9,0 a2.45,2.45 0 1,0 -4.9,0 Z"
+            android:strokeWidth="1.87"
+            android:strokeColor="@color/splash_foreground" />
+    </group>
+</vector>

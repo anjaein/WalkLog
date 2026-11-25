@@ -97,5 +97,16 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "logs",
+      "fieldPath": "route",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "logs",
+      "fieldPath": "photos",
+      "indexes": []
+    }
+  ]
 }
