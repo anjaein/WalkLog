@@ -87,4 +87,21 @@ class FirestoreMappersTest {
         assertEquals(1, read.route.size)
         assertEquals(1, read.photos.size)
     }
+
+    @Test
+    fun walkLog_missingOrUnknownVisibility_readsAsPrivate() {
+        // 공개 범위가 깨진 문서는 공개로 새지 않게 나만 보기로 읽는다
+        val missing = walkLogFromFirestore("l1", log.toFirestore() - "visibility")!!
+        val unknown = walkLogFromFirestore("l1", log.toFirestore() + ("visibility" to "friends"))!!
+        val notString = walkLogFromFirestore("l1", log.toFirestore() + ("visibility" to 1L))!!
+        assertEquals(Visibility.PRIVATE, missing.visibility)
+        assertEquals(Visibility.PRIVATE, unknown.visibility)
+        assertEquals(Visibility.PRIVATE, notString.visibility)
+    }
+
+    @Test
+    fun walkLog_knownVisibility_isReadIgnoringCase() {
+        assertEquals(Visibility.PUBLIC, walkLogFromFirestore("l1", log.toFirestore() + ("visibility" to "PUBLIC"))!!.visibility)
+        assertEquals(Visibility.PRIVATE, walkLogFromFirestore("l1", log.toFirestore() + ("visibility" to "private"))!!.visibility)
+    }
 }

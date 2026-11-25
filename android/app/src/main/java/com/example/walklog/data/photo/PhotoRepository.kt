@@ -17,7 +17,10 @@ interface PhotoRepository {
      */
     suspend fun upload(uri: Uri): Result<LogPhoto>
 
-    /** 올린 사진 파일을 지운다. 지울 수 없는 저장소(Cloudinary)는 아무것도 안 하고 성공으로 끝낸다. */
+    /**
+     * 올린 사진 파일을 지운다. 지울 수 없는 저장소(Cloudinary)는 아무것도 안 하고 성공으로 끝낸다.
+     * 앱이 사진을 올리는 폴더 밖을 가리키는 주소면 지우지 않고 성공으로 끝낸다.
+     */
     suspend fun delete(photo: LogPhoto): Result<Unit>
 }
 

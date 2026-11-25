@@ -1,7 +1,9 @@
 package com.example.walklog.data.save
 
 import com.example.walklog.data.firebase.FirestorePaths
+import com.example.walklog.data.firebase.visibilityFromFirestore
 import com.example.walklog.data.log.LogIds
+import com.example.walklog.data.log.isVisibleTo
 import com.example.walklog.data.suspendRunCatching
 import com.example.walklog.data.user.UserIds
 import com.google.firebase.firestore.FieldValue
@@ -49,9 +51,14 @@ class FirebaseSaveRepository(
         firestore.runTransaction<Unit> { transaction ->
             // 표시 문서가 이미 원하는 상태면 수를 건드리지 않아야, 두 번 눌려도 저장 수가 어긋나지 않는다
             val markerExists = transaction.get(markerRef).exists()
-            val logExists = transaction.get(logRef).exists()
+            val log = transaction.get(logRef)
+            val logExists = log.exists()
+            // 남의 나만 보기 로그에는 새로 표시하지 않는다. 끄기는 막지 않는다:
+            // 공개일 때 눌렀다가 나만 보기로 바뀐 뒤 끄면, 수를 안 줄였을 때 표시만 사라지고 수가 어긋난다
+            val canMark = logExists &&
+                isVisibleTo(visibilityFromFirestore(log.get("visibility")), log.get("authorId") as? String, uid)
             // 지워졌거나 없는 로그에는 새로 표시하지 않는다. 표시가 남으면 목록에 열 수 없는 로그가 생긴다
-            if (saved && !logExists) return@runTransaction
+            if (saved && !canMark) return@runTransaction
             if (markerExists != saved) {
                 if (saved) {
                     transaction.set(markerRef, mapOf("savedAt" to System.currentTimeMillis()))

@@ -8,6 +8,7 @@ import com.example.walklog.data.model.Visibility
 import com.example.walklog.data.model.WalkLog
 import com.example.walklog.data.photo.PhotoRepository
 import com.example.walklog.data.suspendRunCatching
+import com.example.walklog.data.user.UserIds
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
@@ -33,10 +34,12 @@ class FirebaseLogRepository(
         if (!LogIds.isValid(logId)) return flow<WalkLog?> { LogIds.requireValid(logId) }
         return logs.document(logId).snapshots().map { snapshot ->
             snapshot.data?.let { walkLogFromFirestore(snapshot.id, it) }
+                ?.takeIf { isVisibleTo(it.visibility, it.authorId, currentUid()) }
         }
     }
 
     override fun observeLogsByUser(uid: String, includePrivate: Boolean): Flow<List<WalkLog>> {
+        if (!UserIds.isValid(uid)) return flow<List<WalkLog>> { UserIds.requireValid(uid) }
         var query: Query = logs.whereEqualTo("authorId", uid)
         // 남의 프로필에서 includePrivate 를 잘못 넘겨도 나만 보기 로그가 새지 않게, 본인일 때만 허용한다
         val withPrivate = includePrivate && uid == currentUid()
@@ -71,7 +74,15 @@ class FirebaseLogRepository(
             val result = decideCreate(existing.exists(), existing.getString("authorId"), uid)
             if (result == CreateDecision.CREATE) {
                 val now = System.currentTimeMillis()
-                val fresh = log.copy(id = "", authorId = uid, likeCount = 0, saveCount = 0, createdAt = now, updatedAt = now)
+                val fresh = log.copy(
+                    id = "",
+                    authorId = uid,
+                    tags = normalizeTags(log.tags),
+                    likeCount = 0,
+                    saveCount = 0,
+                    createdAt = now,
+                    updatedAt = now,
+                )
                 tx.set(ref, fresh.toFirestore())
             }
             result
@@ -84,7 +95,7 @@ class FirebaseLogRepository(
         LogIds.requireValid(log.id)
         val uid = currentUid() ?: throw IllegalStateException("Not signed in")
         val ref = logs.document(log.id)
-        val data = log.toFirestore() - IMMUTABLE_FIELDS + ("updatedAt" to System.currentTimeMillis())
+        val data = log.copy(tags = normalizeTags(log.tags)).toFirestore() - IMMUTABLE_FIELDS + ("updatedAt" to System.currentTimeMillis())
         val decision = firestore.runTransaction { tx ->
             val existing = tx.get(ref)
             val result = decideChange(existing.exists(), existing.getString("authorId"), uid)

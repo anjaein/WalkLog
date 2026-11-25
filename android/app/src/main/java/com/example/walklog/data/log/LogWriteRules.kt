@@ -1,5 +1,7 @@
 package com.example.walklog.data.log
 
+import com.example.walklog.data.model.Visibility
+
 enum class CreateDecision { CREATE, ALREADY_SAVED, ID_TAKEN }
 
 enum class ChangeDecision { ALLOWED, NOT_FOUND, NOT_AUTHOR }
@@ -21,3 +23,11 @@ fun decideChange(exists: Boolean, existingAuthorId: String?, uid: String?): Chan
     existingAuthorId == uid -> ChangeDecision.ALLOWED
     else -> ChangeDecision.NOT_AUTHOR
 }
+
+/** 나만 보기 로그는 작성자에게만 보인다. 로그인하지 않았으면(uid == null) 공개 로그만 보인다. */
+fun isVisibleTo(visibility: Visibility, authorId: String?, uid: String?): Boolean =
+    visibility == Visibility.PUBLIC || (uid != null && authorId == uid)
+
+/** 앞뒤 공백을 지우고, 빈 태그와 겹치는 태그를 뺀다. 순서는 처음 나온 순서를 지킨다. */
+fun normalizeTags(tags: List<String>): List<String> =
+    tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct()

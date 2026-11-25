@@ -12,8 +12,10 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
@@ -23,6 +25,7 @@ class FusedLocationRepository(context: Context) : LocationRepository {
 
     private val client = LocationServices.getFusedLocationProviderClient(context.applicationContext)
 
+    // 기본 버퍼(64)는 수집이 밀리면 trySend 가 실패해 경로 점이 조용히 빠진다. 기록 중 점은 하나도 버리지 않는다
     override fun locationUpdates(intervalMs: Long): Flow<RoutePoint> = callbackFlow {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs).build()
         val callback = object : LocationCallback() {
@@ -39,7 +42,7 @@ class FusedLocationRepository(context: Context) : LocationRepository {
         }
 
         awaitClose { client.removeLocationUpdates(callback) }
-    }
+    }.buffer(Channel.UNLIMITED)
 
     override suspend fun currentLocation(): Result<RoutePoint?> = suspendRunCatching {
         val cancellation = CancellationTokenSource()

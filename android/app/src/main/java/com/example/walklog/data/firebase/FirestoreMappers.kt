@@ -70,7 +70,7 @@ fun walkLogFromFirestore(id: String, data: Map<String, Any?>): WalkLog? {
         minutes = data.long("minutes").toInt(),
         distanceKm = (data["distanceKm"] as? Number)?.toDouble() ?: 0.0,
         place = data.string("place"),
-        visibility = enumOrDefault(data["visibility"], Visibility.PUBLIC),
+        visibility = visibilityFromFirestore(data["visibility"]),
         tags = (data["tags"] as? List<*>)?.filterIsInstance<String>().orEmpty(),
         likeCount = data.long("likeCount").toInt(),
         saveCount = data.long("saveCount").toInt(),
@@ -80,6 +80,9 @@ fun walkLogFromFirestore(id: String, data: Map<String, Any?>): WalkLog? {
         updatedAt = data.long("updatedAt"),
     )
 }
+
+/** 로그의 공개 범위. 값이 없거나 모르는 값이면 나만 보기로 읽어, 잘못된 문서가 공개로 새지 않게 한다. */
+fun visibilityFromFirestore(value: Any?): Visibility = enumOrDefault(value, Visibility.PRIVATE)
 
 fun RoutePoint.toFirestore(): Map<String, Any?> = mapOf(
     "lat" to lat,

@@ -3,16 +3,21 @@ package com.example.walklog.data.log
 import com.example.walklog.data.NetworkException
 import com.example.walklog.data.model.FeedSort
 import com.example.walklog.data.model.WalkLog
+import com.example.walklog.data.user.UserIds
 import kotlinx.coroutines.flow.Flow
 
 interface LogRepository {
-    /** 로그 하나를 지켜본다. 지워졌거나 없으면 null. logId 가 [LogIds] 규칙에 맞지 않으면 수집할 때 [IllegalArgumentException]으로 실패한다. */
+    /**
+     * 로그 하나를 지켜본다. 지워졌거나 없으면 null. logId 가 [LogIds] 규칙에 맞지 않으면 수집할 때 [IllegalArgumentException]으로 실패한다.
+     * 나만 보기 로그는 작성자에게만 보인다. 작성자가 아니면(로그인 안 함 포함) 없는 로그처럼 null 을 준다.
+     */
     fun observeLog(logId: String): Flow<WalkLog?>
 
     /**
      * 한 사용자의 로그, 최근 순. 내 프로필이면 includePrivate = true 로 나만 보기 로그까지 받는다.
      * includePrivate = true 여도 uid 가 지금 로그인한 사용자가 아니면(로그인 안 함 포함) 공개 로그만 준다.
      * 로그인한 사용자는 부를 때 한 번 확인하므로, 로그인 · 로그아웃 뒤에는 다시 불러야 한다.
+     * uid 가 [UserIds] 규칙에 맞지 않으면 수집할 때 [IllegalArgumentException]으로 실패한다.
      */
     fun observeLogsByUser(uid: String, includePrivate: Boolean): Flow<List<WalkLog>>
 
@@ -20,7 +25,7 @@ interface LogRepository {
     fun observeFeed(tag: String? = null, sort: FeedSort = FeedSort.RECENT, limit: Long = 50): Flow<List<WalkLog>>
 
     /**
-     * 지금 로그인한 사용자의 새 로그로 저장하고 logId 를 돌려준다.
+     * 지금 로그인한 사용자의 새 로그로 저장하고 logId 를 돌려준다. 태그는 [normalizeTags]로 다듬어 저장한다.
      * 작성자는 log.authorId 와 상관없이 로그인한 uid 로 채우고, 좋아요 수 · 저장 수 · 작성 시각은 무시하고 새로 채운다.
      * 로그인하지 않았으면 [IllegalStateException]으로 실패한다.
      *
@@ -36,7 +41,7 @@ interface LogRepository {
     suspend fun createLog(log: WalkLog): Result<String>
 
     /**
-     * 좋아요 수 · 저장 수 · 작성자 · 작성 시각은 바꾸지 않는다.
+     * 좋아요 수 · 저장 수 · 작성자 · 작성 시각은 바꾸지 않는다. 태그는 [normalizeTags]로 다듬어 저장한다.
      * 로그가 없으면 [NoSuchElementException], 로그인하지 않았거나 저장된 작성자가 로그인한 사용자가 아니면 [IllegalStateException],
      * log.id 가 [LogIds] 규칙에 맞지 않으면 [IllegalArgumentException]으로 실패한다.
      * 쓰기는 연결이 있어야 한다. [NetworkException]은 서버가 고쳤는데 응답만 못 받았을 때도 올 수 있으며, 같은 내용으로 다시 시도하면 된다.
