@@ -1,0 +1,12 @@
+package com.example.walklog.data.location
+
+import com.example.walklog.data.model.RoutePoint
+import kotlinx.coroutines.flow.Flow
+
+/** 위치 권한은 화면에서 먼저 받아야 한다. 권한이 없으면 SecurityException 으로 실패한다. */
+interface LocationRepository {
+    /** 걷는 동안 intervalMs 마다 위치를 보낸다. GPS 튐 거르기는 domain 에서 한다. */
+    fun locationUpdates(intervalMs: Long = 4_000L): Flow<RoutePoint>
+
+    suspend fun currentLocation(): Result<RoutePoint?>
+}
