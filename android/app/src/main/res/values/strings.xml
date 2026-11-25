@@ -5,4 +5,50 @@
     <string name="nav_home">홈</string>
     <string name="nav_map">지도</string>
     <string name="nav_explore">탐색</string>
+
+    <!-- 공통 동작 -->
+    <string name="action_back">뒤로</string>
+    <string name="action_close">닫기</string>
+    <string name="action_share">공유</string>
+
+    <!-- 화면 이름 (웹 프로토타입 화면 목록과 같다) -->
+    <string name="screen_onboarding">온보딩 %1$d단계</string>
+    <string name="screen_home">홈</string>
+    <string name="screen_my_logs">내 로그</string>
+    <string name="screen_archive">보관함</string>
+    <string name="screen_settings">설정</string>
+    <string name="screen_profile_edit">프로필 편집</string>
+    <string name="screen_log">로그 상세</string>
+    <string name="screen_record_time">로그 남기기</string>
+    <string name="screen_record_course">코스와 사진 · 글쓰기</string>
+    <string name="screen_record_edit">로그 수정</string>
+    <string name="screen_record_done">등록 완료</string>
+    <string name="screen_map">지도</string>
+    <string name="screen_map_view">지도 화면</string>
+    <string name="screen_follow">따라 걷는 중</string>
+    <string name="screen_explore">탐색</string>
+    <string name="screen_search">검색</string>
+    <string name="screen_post">남의 로그</string>
+    <string name="screen_user">남의 프로필</string>
+    <string name="screen_not_found">찾을 수 없어요</string>
+
+    <!-- 빈 화면 자리 (각 화면을 만들면 사라진다) -->
+    <string name="placeholder_owner">%1$s 폴더에서 만들 화면이에요</string>
+    <string name="placeholder_param">%1$s: %2$s</string>
+    <string name="placeholder_param_empty">없음</string>
+    <string name="placeholder_links">이동할 수 있는 화면</string>
+    <string name="link_google_login">Google로 계속하기</string>
+    <string name="link_email_login">이메일로 계속하기</string>
+    <string name="link_next_step">다음 단계</string>
+    <string name="link_start">시작하기</string>
+    <string name="link_next">다음</string>
+    <string name="link_register">등록</string>
+    <string name="link_save">저장</string>
+    <string name="link_view_log">로그 보기</string>
+    <string name="link_view_on_map">지도에서 보기</string>
+    <string name="link_follow">따라 걷기</string>
+    <string name="link_stop_walking">그만 걷기</string>
+    <string name="link_logout">로그아웃</string>
+    <string name="link_delete_account">계정 삭제</string>
+    <string name="link_go_home">홈으로 가기</string>
 </resources>
