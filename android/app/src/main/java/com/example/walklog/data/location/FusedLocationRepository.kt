@@ -4,8 +4,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Looper
+import com.example.walklog.data.DataException
+import com.example.walklog.data.LocationPermissionException
+import com.example.walklog.data.mapDataErrors
 import com.example.walklog.data.model.RoutePoint
 import com.example.walklog.data.suspendRunCatching
+import com.example.walklog.data.toDataException
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -19,7 +23,7 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-// 위치 권한은 화면에서 먼저 요청한다. 권한 없이 부르면 SecurityException 으로 실패한다.
+// 위치 권한은 화면에서 먼저 요청한다. 권한 없이 부르면 SecurityException 이 오고, LocationPermissionException 으로 바꿔 실패한다.
 @SuppressLint("MissingPermission")
 class FusedLocationRepository(context: Context) : LocationRepository {
 
@@ -36,13 +40,13 @@ class FusedLocationRepository(context: Context) : LocationRepository {
 
         try {
             client.requestLocationUpdates(request, callback, Looper.getMainLooper())
-                .addOnFailureListener { close(it) }
+                .addOnFailureListener { close(it.toLocationDataException()) }
         } catch (e: SecurityException) {
-            close(e)
+            close(e.toLocationDataException())
         }
 
         awaitClose { client.removeLocationUpdates(callback) }
-    }.buffer(Channel.UNLIMITED)
+    }.buffer(Channel.UNLIMITED).mapDataErrors()
 
     override suspend fun currentLocation(): Result<RoutePoint?> = suspendRunCatching {
         val cancellation = CancellationTokenSource()
@@ -51,6 +55,8 @@ class FusedLocationRepository(context: Context) : LocationRepository {
                 .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
                 .await()
             location?.toRoutePoint()
+        } catch (e: SecurityException) {
+            throw e.toLocationDataException()
         } finally {
             cancellation.cancel()
         }
@@ -58,3 +64,7 @@ class FusedLocationRepository(context: Context) : LocationRepository {
 
     private fun Location.toRoutePoint() = RoutePoint(lat = latitude, lng = longitude, recordedAt = time)
 }
+
+/** 위치 권한이 없을 때의 SecurityException 만 [LocationPermissionException]으로, 나머지는 공통 규칙으로 바꾼다. */
+internal fun Throwable.toLocationDataException(): DataException =
+    if (this is SecurityException) LocationPermissionException(this) else toDataException()

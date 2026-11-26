@@ -1,5 +1,6 @@
 package com.example.walklog.data.auth
 
+import com.example.walklog.data.mapDataErrors
 import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
@@ -16,24 +17,28 @@ class FirebaseAuthRepository(private val auth: FirebaseAuth) : AuthRepository {
         val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser?.uid) }
         auth.addAuthStateListener(listener)
         awaitClose { auth.removeAuthStateListener(listener) }
-    }.distinctUntilChanged()
+    }.distinctUntilChanged().mapDataErrors()
 
     override fun currentUserIdNow(): String? = auth.currentUser?.uid
 
     override suspend fun signUpWithEmail(email: String, password: String): Result<String> = suspendRunCatching {
+        signUpInputFailure(email, password)?.let { throw it }
         auth.createUserWithEmailAndPassword(email, password).await().uid()
     }
 
     override suspend fun signInWithEmail(email: String, password: String): Result<String> = suspendRunCatching {
+        signInInputFailure(email, password)?.let { throw it }
         auth.signInWithEmailAndPassword(email, password).await().uid()
     }
 
     override suspend fun signInWithGoogle(idToken: String): Result<String> = suspendRunCatching {
+        googleTokenInputFailure(idToken)?.let { throw it }
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential).await().uid()
     }
 
     override suspend fun sendPasswordReset(email: String): Result<Unit> = suspendRunCatching {
+        passwordResetInputFailure(email)?.let { throw it }
         auth.sendPasswordResetEmail(email).await()
     }
 

@@ -2,9 +2,12 @@ package com.example.walklog.data.user
 
 import com.example.walklog.data.HandleTakenException
 import com.example.walklog.data.InvalidHandleException
+import com.example.walklog.data.NotFoundException
+import com.example.walklog.data.PermissionDeniedException
 import com.example.walklog.data.firebase.FirestorePaths
 import com.example.walklog.data.firebase.toFirestore
 import com.example.walklog.data.firebase.userFromFirestore
+import com.example.walklog.data.mapDataErrors
 import com.example.walklog.data.model.User
 import com.example.walklog.data.suspendRunCatching
 import com.google.firebase.firestore.FirebaseFirestore
@@ -25,10 +28,10 @@ class FirebaseUserRepository(
 
     override fun observeUser(uid: String): Flow<User?> {
         // 잘못된 uid 를 부른 자리에서 바로 죽이지 않고, 수집할 때 실패로 알린다
-        if (!UserIds.isValid(uid)) return flow<User?> { UserIds.requireValid(uid) }
+        if (!UserIds.isValid(uid)) return flow<User?> { UserIds.requireValid(uid) }.mapDataErrors()
         return userDoc(uid).snapshots().map { snapshot ->
             snapshot.data?.let { userFromFirestore(uid, it) }
-        }
+        }.mapDataErrors()
     }
 
     override suspend fun isHandleAvailable(handle: String): Result<Boolean> = suspendRunCatching {
@@ -93,11 +96,11 @@ class FirebaseUserRepository(
                 false
             }
         }.await()
-        if (!updated) throw NoSuchElementException("User not found: ${user.uid}")
+        if (!updated) throw NotFoundException("User not found: ${user.uid}")
     }
 
     private fun requireSignedInAs(uid: String) {
-        if (uid != currentUid()) throw IllegalStateException("Not the signed-in user")
+        if (uid != currentUid()) throw PermissionDeniedException("Not the signed-in user")
     }
 
     // '/' 가 들어간 아이디는 Firestore 문서 경로를 깨뜨리므로, 문서를 건드리기 전에 규칙부터 확인한다
