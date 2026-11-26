@@ -1,0 +1,19 @@
+{
+  "name": "photos/e5a8daf7-57c9-480a-9943-8562f43438f2.jpg",
+  "bucket": "walklog-e37fa.firebasestorage.app",
+  "metageneration": 1,
+  "generation": 1795649304236,
+  "contentType": "image/jpeg",
+  "storageClass": "STANDARD",
+  "contentDisposition": "inline",
+  "downloadTokens": [
+    "ca52cd6f-052c-491a-9364-7a416ce360a3"
+  ],
+  "etag": "NET9CuSIn4BWlW3th6/1N526lGM",
+  "customMetadata": {},
+  "timeCreated": "2026-11-25T23:28:24.236Z",
+  "updated": "2026-11-25T23:28:24.236Z",
+  "size": 196147,
+  "md5Hash": "hrgfS4r/sasbtAMxrDKALQ==",
+  "crc32c": "3887164983"
+}
